@@ -15,9 +15,15 @@ const Navbar = () => {
     <nav className="bg-amber-300 text-gray-800 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
             <Link to="/" className="flex-shrink-0 flex items-center">
               <span className="text-xl font-bold">AirTicket 🛩️</span>
+            </Link>
+            <Link 
+              to="/flights" 
+              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-amber-400 transition duration-150"
+            >
+              Vuelos
             </Link>
           </div>
           

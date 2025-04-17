@@ -27,13 +27,40 @@ class FlightApiController extends AbstractController
     }
 
     #[Route('', name: 'api_flights_list', methods: ['GET'])]
-    public function list(): JsonResponse
+    public function list(Request $request): JsonResponse
     {
-        $flights = $this->flightRepository->findAll();
-        $data = $this->serializer->serialize($flights, 'json');
-        return new JsonResponse($data, Response::HTTP_OK, [], true);
-    }
+        try {
+            $origin = $request->query->get('origin');
+            $destination = $request->query->get('destination');
+            $date = $request->query->get('date');
 
+            // Get flights based on provided filters
+            $flights = $this->flightRepository->findByFilters($origin, $destination, $date);
+
+            // Transform flights to array
+            $flightsArray = array_map(function($flight) {
+                return [
+                    'id' => $flight->getId(),
+                    'flight_number' => $flight->getFlightNumber(),
+                    'origin' => $flight->getOrigin(),
+                    'destination' => $flight->getDestination(),
+                    'departure_date' => $flight->getDepartureDate()->format('Y-m-d H:i:s'),
+                    'arrival_date' => $flight->getArrivalDate()->format('Y-m-d H:i:s'),
+                    'base_price' => $flight->getBasePrice(),
+                    'total_seats' => $flight->getTotalSeats(),
+                    'seats_available' => $flight->getSeatsAvailable()
+                ];
+            }, $flights);
+
+            return new JsonResponse($flightsArray, Response::HTTP_OK);
+
+        } catch (\Exception $e) {
+            return new JsonResponse(
+                ['error' => 'Error processing request: ' . $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
     #[Route('/{id}', name: 'api_flights_show', methods: ['GET'])]
     public function show(Flight $flight): JsonResponse
     {
@@ -108,12 +135,44 @@ class FlightApiController extends AbstractController
     #[Route('/search', name: 'api_flights_search', methods: ['GET'])]
     public function search(Request $request): JsonResponse
     {
-        $origin = $request->query->get('origin');
-        $destination = $request->query->get('destination');
-        $date = $request->query->get('date');
+        try {
+            $origin = $request->query->get('origin');
+            $destination = $request->query->get('destination');
+            $date = $request->query->get('date');
 
-        $flights = $this->flightRepository->findByFilters($origin, $destination, $date);
-        $data = $this->serializer->serialize($flights, 'json');
-        return new JsonResponse($data, Response::HTTP_OK, [], true);
+            // Add validation
+            if (!$origin || !$destination || !$date) {
+                return new JsonResponse(
+                    ['error' => 'Missing required parameters'],
+                    Response::HTTP_BAD_REQUEST
+                );
+            }
+
+            // Create a repository method to handle the search
+            $flights = $this->flightRepository->findBySearchCriteria($origin, $destination, $date);
+            
+            // Convert DateTime objects to string and include all necessary fields
+            $flightsArray = array_map(function($flight) {
+                return [
+                    'id' => $flight->getId(),
+                    'flight_number' => $flight->getFlightNumber(),
+                    'origin' => $flight->getOrigin(),
+                    'destination' => $flight->getDestination(),
+                    'departure_date' => $flight->getDepartureDate()->format('Y-m-d H:i:s'),
+                    'arrival_date' => $flight->getArrivalDate()->format('Y-m-d H:i:s'),
+                    'base_price' => $flight->getBasePrice(),
+                    'total_seats' => $flight->getTotalSeats(),
+                    'seats_available' => $flight->getSeatsAvailable()
+                ];
+            }, $flights);
+
+            return new JsonResponse($flightsArray, Response::HTTP_OK);
+            
+        } catch (\Exception $e) {
+            return new JsonResponse(
+                ['error' => 'Error processing request: ' . $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
     }
 }

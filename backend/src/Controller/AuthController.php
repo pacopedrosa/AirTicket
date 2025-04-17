@@ -101,7 +101,7 @@ public function login(
     $token = $jwtManager->create($user);
     
     // Crear la respuesta
-    $response = $this->json([
+    return $this->json([
         'message' => 'Login exitoso',
         'user' => [
             'id' => $user->getId(),
@@ -109,36 +109,42 @@ public function login(
             'username' => $user->getUsername(),
             'fullName' => $user->getFullName(),
             'roles' => $user->getRoles()
-        ]
+        ],
+        'token' => $token
     ]);
+
+    // return $response;
+    // // Configurar la cookie
+    // $cookie = Cookie::create('BEARER')
+    //     ->withValue($token)
+    //     ->withExpires(new \DateTime('+1 hour'))
+    //     ->withPath('/')
+    //     ->withDomain('localhost')
+    //     ->withSecure(false) // false para desarrollo local
+    //     ->withHttpOnly(true)
+    //     ->withSameSite('lax');
     
-    // Configurar la cookie
-    $cookie = Cookie::create('BEARER')
-        ->withValue($token)
-        ->withExpires(new \DateTime('+1 hour'))
-        ->withPath('/')
-        ->withDomain('localhost')
-        ->withSecure(false) // false para desarrollo local
-        ->withHttpOnly(true)
-        ->withSameSite('lax');
+    // $response->headers->setCookie($cookie);
     
-    $response->headers->setCookie($cookie);
-    
-    return $response;
+    // return $response;
 }
 
-    #[Route('/api/user', name: 'api_user_info', methods: ['GET'])]
-    public function getUserInfo(): JsonResponse
+    #[Route('/api/user', name: 'api_user', methods: ['GET'])]
+    public function getUserData(): JsonResponse
     {
+        /** @var User|null $user */
         $user = $this->getUser();
         
+        if (!$user) {
+            return $this->json(['error' => 'User not found'], Response::HTTP_UNAUTHORIZED);
+        }
+    
         return $this->json([
             'id' => $user->getId(),
+            'email' => $user->getEmail(),
             'username' => $user->getUsername(),
             'fullName' => $user->getFullName(),
-            'phone' => $user->getPhone(),
-            'birthdate' => $user->getBirthdate()->format('Y-m-d'),
             'roles' => $user->getRoles()
         ]);
     }
-} 
+}

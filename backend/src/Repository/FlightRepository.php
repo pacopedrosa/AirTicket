@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\Flight;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -16,20 +17,11 @@ class FlightRepository extends ServiceEntityRepository
         parent::__construct($registry, Flight::class);
     }
 
-    public function findByFilters(?string $origin, ?string $destination, ?string $date)
+    public function findByFilters(?string $origin = null, ?string $destination = null, ?string $date = null)
     {
         $qb = $this->createQueryBuilder('f');
 
-        if ($origin) {
-            $qb->andWhere('f.origin = :origin')
-               ->setParameter('origin', $origin);
-        }
-
-        if ($destination) {
-            $qb->andWhere('f.destination = :destination')
-               ->setParameter('destination', $destination);
-        }
-
+        // Handle date filtering if provided
         if ($date) {
             $dateStart = new \DateTime($date);
             $dateEnd = clone $dateStart;
@@ -40,31 +32,35 @@ class FlightRepository extends ServiceEntityRepository
                ->setParameter('dateEnd', $dateEnd);
         }
 
+        // Handle origin filtering if provided
+        if ($origin) {
+            $qb->andWhere('f.origin = :origin')
+               ->setParameter('origin', $origin);
+        }
+
+        // Handle destination filtering if provided
+        if ($destination) {
+            $qb->andWhere('f.destination = :destination')
+               ->setParameter('destination', $destination);
+        }
+
+        // Always order by departure date
+        $qb->orderBy('f.departure_date', 'ASC');
+
         return $qb->getQuery()->getResult();
     }
 
-//    /**
-//     * @return Flight[] Returns an array of Flight objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('f')
-//            ->andWhere('f.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('f.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
+    public function findByDateRange($origin, $destination, $date)
+    {
+        $qb = $this->createQueryBuilder('f')
+            ->where('f.origin = :origin')
+            ->andWhere('f.destination = :destination')
+            ->andWhere('DATE(f.departure_date) = :date')
+            ->setParameter('origin', $origin)
+            ->setParameter('destination', $destination)
+            ->setParameter('date', $date)
+            ->orderBy('f.departure_date', 'ASC');
 
-//    public function findOneBySomeField($value): ?Flight
-//    {
-//        return $this->createQueryBuilder('f')
-//            ->andWhere('f.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+        return $qb->getQuery()->getResult();
+    }
 }
