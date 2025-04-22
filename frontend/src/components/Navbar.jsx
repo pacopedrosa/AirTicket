@@ -25,6 +25,14 @@ const Navbar = () => {
             >
               Vuelos
             </Link>
+            {user && (
+              <Link 
+                to="/my-flights" 
+                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-amber-400 transition duration-150"
+              >
+                Mis Vuelos
+              </Link>
+            )}
           </div>
           
           <div className="flex items-center space-x-4">
@@ -61,4 +69,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar; 
+export default Navbar;

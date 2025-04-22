@@ -24,13 +24,24 @@ class Reservations
     private ?int $total_price = null;
 
     #[ORM\ManyToOne(inversedBy: 'reservations')]
+    #[ORM\JoinColumn(name: "user_id", referencedColumnName: "id")]
     private ?User $user = null;
 
     #[ORM\ManyToOne(inversedBy: 'reservations')]
+    #[ORM\JoinColumn(name: "flight_id", referencedColumnName: "id")]
     private ?Flight $flight = null;
 
     #[ORM\ManyToOne(inversedBy: 'reservation')]
+    #[ORM\JoinColumn(name: "passengers_id", referencedColumnName: "id")]
     private ?Passengers $passengers = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $payment_method = null;
+
+    public function __construct()
+    {
+        $this->reservation_date = new \DateTime();
+    }
 
     public function getId(): ?int
     {
@@ -106,6 +117,17 @@ class Reservations
     {
         $this->passengers = $passengers;
 
+        return $this;
+    }
+
+    public function getPaymentMethod(): ?string
+    {
+        return $this->payment_method;
+    }
+
+    public function setPaymentMethod(?string $payment_method): static
+    {
+        $this->payment_method = $payment_method;
         return $this;
     }
 }

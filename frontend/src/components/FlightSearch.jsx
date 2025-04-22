@@ -10,7 +10,16 @@ const FlightSearch = () => {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        navigate(`/flights?origin=${origin}&destination=${destination}&date=${departureDate}&passengers=${passengers}`);
+        
+        // Build query params only with filled fields
+        const params = new URLSearchParams();
+        
+        if (origin) params.append('origin', origin);
+        if (destination) params.append('destination', destination);
+        if (departureDate) params.append('date', departureDate);
+        params.append('passengers', passengers);
+
+        navigate(`/flights?${params.toString()}`);
     };
 
     return (
@@ -25,8 +34,7 @@ const FlightSearch = () => {
                             value={origin}
                             onChange={(e) => setOrigin(e.target.value)}
                             className="w-full px-3 py-2 border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
-                            placeholder="Ciudad de origen"
-                            required
+                            placeholder="Ciudad de origen (opcional)"
                         />
                     </div>
                     <div>
@@ -36,8 +44,7 @@ const FlightSearch = () => {
                             value={destination}
                             onChange={(e) => setDestination(e.target.value)}
                             className="w-full px-3 py-2 border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
-                            placeholder="Ciudad de destino"
-                            required
+                            placeholder="Ciudad de destino (opcional)"
                         />
                     </div>
                 </div>
@@ -49,7 +56,7 @@ const FlightSearch = () => {
                             value={departureDate}
                             onChange={(e) => setDepartureDate(e.target.value)}
                             className="w-full px-3 py-2 border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
-                            required
+                            placeholder="Fecha de salida (opcional)"
                         />
                     </div>
                     <div>
@@ -78,4 +85,4 @@ const FlightSearch = () => {
     );
 };
 
-export default FlightSearch; 
+export default FlightSearch;

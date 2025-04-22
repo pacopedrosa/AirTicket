@@ -19,38 +19,42 @@ const Flights = () => {
                 const destination = searchParams.get('destination');
                 const date = searchParams.get('date');
 
-                if (origin && destination && date) {
-                    const token = Cookies.get('jwt_token');
-                    if (!token) {
+                const token = Cookies.get('jwt_token');
+                if (!token) {
+                    navigate('/login');
+                    return;
+                }
+
+                // Build query string with only provided parameters
+                const params = new URLSearchParams();
+                if (origin) params.append('origin', origin);
+                if (destination) params.append('destination', destination);
+                if (date) params.append('date', date);
+
+                const response = await fetch(
+                    `http://localhost:8000/api/flights${params.toString() ? `?${params.toString()}` : ''}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    if (response.status === 401) {
                         navigate('/login');
                         return;
                     }
-
-                    const response = await fetch(
-                        `http://localhost:8000/api/flights?origin=${origin}&destination=${destination}&date=${date}`,
-                        {
-                            method: 'GET',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json'
-                            }
-                        }
-                    );
-
-                    if (!response.ok) {
-                        if (response.status === 401) {
-                            navigate('/login');
-                            return;
-                        }
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Error al cargar los vuelos');
-                    }
-
-                    const data = await response.json();
-                    setFlights(data);
-                    setError(null);
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error al cargar los vuelos');
                 }
+
+                const data = await response.json();
+                setFlights(data);
+                setError(null);
             } catch (error) {
                 console.error('Error:', error);
                 setError('Error al cargar los vuelos. Por favor, inténtalo de nuevo.');

@@ -3,9 +3,11 @@ import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Flights from "../pages/Flights";
+import MyFlights from "../pages/MyFlights";
 import ErrorPage from "../pages/ErrorPage";
 import RootLayout from "../layouts/RootLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
+import Payment from "../pages/Payment";
 
 const router = createBrowserRouter([
     {
@@ -33,6 +35,14 @@ const router = createBrowserRouter([
                     {
                         index: true,
                         element: <Home />,
+                    },
+                    {
+                        path: "my-flights",
+                        element: <MyFlights />,
+                    },
+                    {
+                        path: "payment/:flightId",
+                        element: <Payment />,
                     }
                 ]
             }
