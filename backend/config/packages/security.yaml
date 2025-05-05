@@ -29,12 +29,12 @@ security:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/register, roles: PUBLIC_ACCESS }
         - { path: ^/api/user, roles: IS_AUTHENTICATED_FULLY }
-        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/admin, roles: ROLE_ADMIN }
         - { path: ^/api/flights$, roles: ROLE_USER, methods: [GET] }
         - { path: ^/api/flights/search, roles: ROLE_USER }
         - { path: ^/api/flights, roles: ROLE_ADMIN, methods: [POST, PUT, DELETE] }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
-        # - { path: ^/admin, roles: ROLE_ADMIN }
+        # - { path: ^/api/admin, roles: ROLE_ADMIN }
         # - { path: ^/profile, roles: ROLE_USER }
 
 when@test:

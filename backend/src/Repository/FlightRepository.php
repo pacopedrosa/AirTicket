@@ -3,13 +3,12 @@
 namespace App\Repository;
 
 use App\Entity\Flight;
+use App\Entity\User;
+use App\Entity\Reservations;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
-/**
- * @extends ServiceEntityRepository<Flight>
- */
 class FlightRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -62,5 +61,46 @@ class FlightRepository extends ServiceEntityRepository
             ->orderBy('f.departure_date', 'ASC');
 
         return $qb->getQuery()->getResult();
+    }
+
+    public function calculateAverageDuration(User $user): float
+    {
+        try {
+            $result = $this->createQueryBuilder('f')
+                ->select('AVG(TIMESTAMPDIFF(HOUR, f.departure_date, f.arrival_date)) as avg_duration')
+                ->join(Reservations::class, 'r', 'WITH', 'r.flight = f')
+                ->where('r.user = :user')
+                ->setParameter('user', $user)
+                ->getQuery()
+                ->getSingleScalarResult();
+
+            return $result ? round((float) $result, 2) : 0.0;
+        } catch (\Exception $e) {
+            return 0.0;
+        }
+    }
+
+    // Add these methods to your existing FlightRepository class
+
+    public function countActiveFlights(): int
+    {
+        return $this->createQueryBuilder('f')
+            ->select('COUNT(f.id)')
+            ->where('f.date >= :today')
+            ->setParameter('today', new \DateTime())
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function findPaginated(int $page, int $limit): array
+    {
+        $offset = ($page - 1) * $limit;
+
+        return $this->createQueryBuilder('f')
+            ->orderBy('f.date', 'DESC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
     }
 }

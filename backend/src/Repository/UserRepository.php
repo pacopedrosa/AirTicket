@@ -8,15 +8,19 @@ use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * @extends ServiceEntityRepository<User>
  */
 class UserRepository extends ServiceEntityRepository implements PasswordUpgraderInterface
 {
-    public function __construct(ManagerRegistry $registry)
+    private LoggerInterface $logger;
+
+    public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
     {
         parent::__construct($registry, User::class);
+        $this->logger = $logger;
     }
 
     /**
@@ -33,28 +37,47 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->getEntityManager()->flush();
     }
 
-//    /**
-//     * @return User[] Returns an array of User objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('u')
-//            ->andWhere('u.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('u.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
+    public function findPaginated(int $page, int $limit): array
+    {
+        try {
+            $this->logger->info('Ejecutando findPaginated', ['page' => $page, 'limit' => $limit]);
 
-//    public function findOneBySomeField($value): ?User
-//    {
-//        return $this->createQueryBuilder('u')
-//            ->andWhere('u.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+            // Validar parámetros
+            $page = max(1, $page);
+            $limit = max(1, min(100, $limit)); // Limitar el máximo para evitar sobrecarga
+            $offset = ($page - 1) * $limit;
+
+            // Obtener usuarios para la página actual
+            $query = $this->createQueryBuilder('u')
+                ->select('u')
+                ->orderBy('u.id', 'DESC')
+                ->setFirstResult($offset)
+                ->setMaxResults($limit)
+                ->getQuery();
+
+            $users = $query->getResult();
+
+            // Contar el total de usuarios
+            $totalCount = (int) $this->createQueryBuilder('u')
+                ->select('COUNT(u.id)')
+                ->getQuery()
+                ->getSingleScalarResult();
+
+            $totalPages = (int) ceil($totalCount / $limit);
+
+            $this->logger->info('Usuarios paginados obtenidos', [
+                'count' => count($users),
+                'totalCount' => $totalCount,
+                'totalPages' => $totalPages
+            ]);
+
+            return [
+                'items' => $users,
+                'totalPages' => $totalPages
+            ];
+        } catch (\Exception $e) {
+            $this->logger->error('Error en findPaginated: ' . $e->getMessage(), ['exception' => $e]);
+            throw new \Exception('Error al obtener usuarios paginados: ' . $e->getMessage());
+        }
+    }
 }

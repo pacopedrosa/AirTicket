@@ -6,6 +6,8 @@ const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const isAdmin = user?.roles?.includes('ROLE_ADMIN');
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
@@ -26,12 +28,22 @@ const Navbar = () => {
               Vuelos
             </Link>
             {user && (
-              <Link 
-                to="/my-flights" 
-                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-amber-400 transition duration-150"
-              >
-                Mis Vuelos
-              </Link>
+              <>
+                <Link 
+                  to="/my-flights" 
+                  className="px-3 py-2 rounded-md text-sm font-medium hover:bg-amber-400 transition duration-150"
+                >
+                  Mis Vuelos
+                </Link>
+                {isAdmin && (
+                  <Link 
+                    to="/admin" 
+                    className="px-3 py-2 rounded-md text-sm font-medium bg-amber-500 text-white hover:bg-amber-600 transition duration-150"
+                  >
+                    Admin Panel
+                  </Link>
+                )}
+              </>
             )}
           </div>
           

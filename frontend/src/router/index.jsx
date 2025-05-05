@@ -8,6 +8,13 @@ import ErrorPage from "../pages/ErrorPage";
 import RootLayout from "../layouts/RootLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Payment from "../pages/Payment";
+import AdminLayout from '../components/admin/AdminLayout';
+import Dashboard from '../components/admin/Dashboard';
+import UserManagement from '../components/admin/UserManagement';
+import FlightManagement from '../components/admin/FlightManagement';
+import ReservationManagement from '../components/admin/ReservationManagement';
+import Statistics from '../components/admin/Statistics';
+import Settings from '../components/admin/Settings';
 
 const router = createBrowserRouter([
     {
@@ -43,6 +50,19 @@ const router = createBrowserRouter([
                     {
                         path: "payment/:flightId",
                         element: <Payment />,
+                    },
+                    // Admin routes
+                    {
+                        path: "admin",
+                        element: <AdminLayout />,
+                        children: [
+                            { index: true, element: <Dashboard /> },
+                            { path: "users", element: <UserManagement /> },
+                            { path: "flights", element: <FlightManagement /> },
+                            { path: "reservations", element: <ReservationManagement /> },
+                            { path: "statistics", element: <Statistics /> },
+                            { path: "settings", element: <Settings /> }
+                        ]
                     }
                 ]
             }

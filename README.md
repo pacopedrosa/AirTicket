@@ -1,0 +1,3 @@
+- Intentar hacer que los vuelos sean periodicos y asi no caduquen
+- Vista del administrador 
+- mirar stripe para los pagos
