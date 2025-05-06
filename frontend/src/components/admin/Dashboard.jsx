@@ -14,43 +14,49 @@ const Dashboard = () => {
     });
     const [recentBookings, setRecentBookings] = useState([]);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const token = Cookies.get('jwt_token');
-                if (!token) {
-                    throw new Error('No authentication token found');
-                }
-
-                const response = await fetch('http://127.0.0.1:8000/api/admin/dashboard', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json'
-                    },
-                    credentials: 'include'
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch dashboard data');
-                }
-
-                const data = await response.json();
-                setStats({
-                    totalUsers: data.totalUsers || 0,
-                    activeFlights: data.activeFlights || 0,
-                    totalReservations: data.totalReservations || 0,
-                    monthlyRevenue: parseFloat(data.monthlyRevenue) || 0
-                });
-                setRecentBookings(data.recentBookings || []);
-            } catch (error) {
-                console.error('Error:', error);
-                setError(error.message);
-            } finally {
-                setLoading(false);
+    const fetchData = async () => {
+        try {
+            const token = Cookies.get('jwt_token');
+            if (!token) {
+                throw new Error('No authentication token found');
             }
-        };
 
-        fetchData();
+            const response = await fetch('http://127.0.0.1:8000/api/admin/dashboard', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                },
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch dashboard data');
+            }
+
+            const data = await response.json();
+            setStats({
+                totalUsers: data.totalUsers || 0,
+                activeFlights: data.activeFlights || 0,
+                totalReservations: data.totalReservations || 0,
+                monthlyRevenue: parseFloat(data.monthlyRevenue) || 0
+            });
+            setRecentBookings(data.recentBookings || []);
+        } catch (error) {
+            console.error('Error:', error);
+            setError(error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData(); // Carga inicial
+
+        // Configurar polling cada 30 segundos
+        const intervalId = setInterval(fetchData, 30000);
+
+        // Limpiar el intervalo cuando el componente se desmonte
+        return () => clearInterval(intervalId);
     }, []);
 
     if (loading) return <div className="flex justify-center items-center h-full">Loading...</div>;
@@ -74,6 +80,12 @@ const Dashboard = () => {
             value: stats.totalReservations, 
             icon: FaTicketAlt,
             color: 'bg-purple-500' 
+        },
+        { 
+            title: 'Monthly Revenue', 
+            value: `€${stats.monthlyRevenue.toFixed(2)}`, 
+            icon: FaEuroSign,
+            color: 'bg-yellow-500' 
         }
     ];
 
@@ -82,7 +94,7 @@ const Dashboard = () => {
             <h2 className="text-2xl font-semibold text-gray-800 mb-6">Dashboard</h2>
             
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {statsConfig.map((stat, index) => (
                     <StatsCard
                         key={index}

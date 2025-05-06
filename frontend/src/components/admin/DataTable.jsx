@@ -1,7 +1,7 @@
 import React from 'react';
 import { FaEdit, FaTrash, FaEye } from 'react-icons/fa';
 
-const DataTable = ({ columns, data, onEdit, onDelete, onView }) => {
+const DataTable = ({ columns, data, onDelete }) => {
     return (
         <div className="bg-white shadow rounded-lg overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
@@ -27,18 +27,6 @@ const DataTable = ({ columns, data, onEdit, onDelete, onView }) => {
                                 </td>
                             ))}
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button
-                                    onClick={() => onView(item)}
-                                    className="text-amber-600 hover:text-amber-900 mr-3"
-                                >
-                                    <FaEye />
-                                </button>
-                                <button
-                                    onClick={() => onEdit(item)}
-                                    className="text-blue-600 hover:text-blue-900 mr-3"
-                                >
-                                    <FaEdit />
-                                </button>
                                 <button
                                     onClick={() => onDelete(item)}
                                     className="text-red-600 hover:text-red-900"

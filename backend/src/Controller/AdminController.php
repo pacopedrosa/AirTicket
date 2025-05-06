@@ -2,9 +2,12 @@
 
 namespace App\Controller;
 
+use App\Entity\Flight;
+use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Repository\FlightRepository;
 use App\Repository\ReservationsRepository;
+use App\Repository\PayRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -13,6 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 #[Route('/api/admin')]
 class AdminController extends AbstractController
@@ -39,9 +43,15 @@ class AdminController extends AbstractController
     public function getStatistics(): JsonResponse
     {
         try {
+            // Mes actual
             $startOfMonth = new \DateTime('first day of this month midnight');
             $endOfMonth = new \DateTime('last day of this month 23:59:59');
 
+            // Mes anterior
+            $startOfLastMonth = (clone $startOfMonth)->modify('-1 month');
+            $endOfLastMonth = (clone $endOfMonth)->modify('-1 month');
+
+            // Ingresos mensuales (actual)
             $monthlyRevenue = $this->reservationsRepository->createQueryBuilder('r')
                 ->select('SUM(r.total_price)')
                 ->where('r.state = :state')
@@ -52,6 +62,18 @@ class AdminController extends AbstractController
                 ->getQuery()
                 ->getSingleScalarResult() ?? 0;
 
+            // Ingresos mensuales (anterior)
+            $lastMonthRevenue = $this->reservationsRepository->createQueryBuilder('r')
+                ->select('SUM(r.total_price)')
+                ->where('r.state = :state')
+                ->andWhere('r.reservation_date BETWEEN :start AND :end')
+                ->setParameter('state', 'CONFIRMED')
+                ->setParameter('start', $startOfLastMonth)
+                ->setParameter('end', $endOfLastMonth)
+                ->getQuery()
+                ->getSingleScalarResult() ?? 0;
+
+            // Vuelos activos (actual)
             $activeFlights = $this->flightRepository->createQueryBuilder('f')
                 ->select('COUNT(f)')
                 ->where('f.departure_date >= :now')
@@ -59,14 +81,48 @@ class AdminController extends AbstractController
                 ->getQuery()
                 ->getSingleScalarResult();
 
+            // Vuelos activos (anterior: vuelos que partieron el mes pasado)
+            $lastMonthFlights = $this->flightRepository->createQueryBuilder('f')
+                ->select('COUNT(f)')
+                ->where('f.departure_date BETWEEN :start AND :end')
+                ->setParameter('start', $startOfLastMonth)
+                ->setParameter('end', $endOfLastMonth)
+                ->getQuery()
+                ->getSingleScalarResult();
+
+            // Reservas totales (actual)
             $totalReservations = $this->reservationsRepository->count(['state' => 'CONFIRMED']);
+
+            // Reservas totales (anterior)
+            $lastMonthReservations = $this->reservationsRepository->createQueryBuilder('r')
+                ->select('COUNT(r)')
+                ->where('r.state = :state')
+                ->andWhere('r.reservation_date BETWEEN :start AND :end')
+                ->setParameter('state', 'CONFIRMED')
+                ->setParameter('start', $startOfLastMonth)
+                ->setParameter('end', $endOfLastMonth)
+                ->getQuery()
+                ->getSingleScalarResult();
+
+            // Usuarios totales (actual)
             $totalUsers = $this->userRepository->count([]);
 
+            // Usuarios totales (anterior: asumimos que no hay campo created_at, así que usamos el mismo conteo)
+            $lastMonthUsers = $totalUsers; // Sin created_at, no podemos saber nuevos usuarios del mes pasado
+
             return $this->json([
-                'totalUsers' => $totalUsers,
-                'activeFlights' => $activeFlights,
-                'totalReservations' => $totalReservations,
-                'monthlyRevenue' => (float)$monthlyRevenue
+                'current' => [
+                    'monthlyRevenue' => (float)$monthlyRevenue,
+                    'activeFlights' => (int)$activeFlights,
+                    'totalReservations' => (int)$totalReservations,
+                    'totalUsers' => (int)$totalUsers
+                ],
+                'previous' => [
+                    'monthlyRevenue' => (float)$lastMonthRevenue,
+                    'activeFlights' => (int)$lastMonthFlights,
+                    'totalReservations' => (int)$lastMonthReservations,
+                    'totalUsers' => (int)$lastMonthUsers
+                ]
             ]);
         } catch (\Exception $e) {
             $this->logger->error('Error al obtener estadísticas: ' . $e->getMessage(), ['exception' => $e]);
@@ -123,27 +179,166 @@ class AdminController extends AbstractController
     public function getFlights(Request $request): JsonResponse
     {
         try {
-            $page = $request->query->getInt('page', 1);
-            $limit = $request->query->getInt('limit', 10);
+            $flights = $this->flightRepository->findAll();
             
-            $flights = $this->flightRepository->findPaginated($page, $limit);
             return new JsonResponse([
                 'items' => array_map(function ($flight) {
-                    return [
-                        'id' => $flight->getId(),
-                        'flightNumber' => $flight->getFlightNumber(),
-                        'origin' => $flight->getOrigin(),
-                        'destination' => $flight->getDestination(),
-                        'departureDate' => $flight->getDepartureDate() 
-                            ? $flight->getDepartureDate()->format('Y-m-d H:i:s') 
-                            : 'N/A'
-                    ];
-                }, $flights['items']),
-                'totalPages' => $flights['totalPages']
+                    try {
+                        $departureDate = $flight->getDepartureDate();
+                        $arrivalDate = $flight->getArrivalDate();
+                        $basePrice = $flight->getBasePrice();
+
+                        return [
+                            'id' => $flight->getId(),
+                            'flightNumber' => $flight->getFlightNumber(),
+                            'origin' => $flight->getOrigin(),
+                            'destination' => $flight->getDestination(),
+                            'departureDate' => $departureDate instanceof \DateTime 
+                                ? $departureDate->format('d/m/Y, H:i:s')
+                                : $departureDate,
+                            'arrivalDate' => $arrivalDate instanceof \DateTime 
+                                ? $arrivalDate->format('d/m/Y, H:i:s')
+                                : $arrivalDate,
+                            'price' => $basePrice !== null ? number_format($basePrice, 2) : '0.00',
+                            'actions' => ['delete']
+                        ];
+                    } catch (\Exception $e) {
+                        $this->logger->error('Error procesando vuelo: ' . $e->getMessage(), [
+                            'flight_id' => $flight->getId()
+                        ]);
+                        return null;
+                    }
+                }, $flights),
+                'totalPages' => 1
             ]);
         } catch (\Exception $e) {
             $this->logger->error('Error al obtener vuelos: ' . $e->getMessage(), ['exception' => $e]);
             return $this->json(['error' => 'Error al obtener vuelos'], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[Route('/flights', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function createFlight(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        try {
+            $data = json_decode($request->getContent(), true);
+
+            $flight = new Flight();
+            $flight->setFlightNumber($data['flightNumber']);
+            $flight->setOrigin($data['origin']);
+            $flight->setDestination($data['destination']);
+            $flight->setDepartureDate(new \DateTime($data['departureDate']));
+            $flight->setArrivalDate(new \DateTime($data['arrivalDate']));
+            $flight->setBasePrice((int)$data['basePrice']);
+            $flight->setTotalSeats((int)$data['totalSeats']);
+            $flight->setSeatsAvailable((int)$data['totalSeats']); // Inicialmente, todos los asientos están disponibles
+
+            $entityManager->persist($flight);
+            $entityManager->flush();
+
+            return $this->json([
+                'message' => 'Vuelo creado exitosamente',
+                'id' => $flight->getId()
+            ], JsonResponse::HTTP_CREATED);
+        } catch (\Exception $e) {
+            $this->logger->error('Error al crear vuelo: ' . $e->getMessage());
+            return $this->json(['error' => 'Error al crear el vuelo'], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[Route('/users', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function createUser(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher): JsonResponse
+    {
+        try {
+            $data = json_decode($request->getContent(), true);
+            
+            // Validación básica de datos requeridos
+            if (!isset($data['username']) || !isset($data['email']) || !isset($data['password'])) {
+                return $this->json([
+                    'error' => 'Faltan campos requeridos (username, email, password)'
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            // Verificar si el usuario ya existe
+            $existingUser = $this->userRepository->findOneBy(['email' => $data['email']]);
+            if ($existingUser) {
+                return $this->json([
+                    'error' => 'Ya existe un usuario con este email'
+                ], JsonResponse::HTTP_CONFLICT);
+            }
+
+            $user = new User();
+            $user->setUsername($data['username']);
+            $user->setEmail($data['email']);
+            $user->setFullName($data['fullName'] ?? '');
+            $user->setPhone($data['phone'] ?? '');
+            
+            // Manejo seguro de la fecha de nacimiento
+            if (isset($data['birthdate']) && $data['birthdate']) {
+                try {
+                    $user->setBirthdate(new \DateTime($data['birthdate']));
+                } catch (\Exception $e) {
+                    $this->logger->warning('Formato de fecha inválido', ['birthdate' => $data['birthdate']]);
+                }
+            }
+            
+            // Asignar roles (por defecto ROLE_USER si no se especifica)
+            $roles = isset($data['roles']) && is_array($data['roles']) ? $data['roles'] : ['ROLE_USER'];
+            $user->setRoles($roles);
+
+            // Hashear la contraseña
+            $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
+            $user->setPassword($hashedPassword);
+
+            $entityManager->persist($user);
+            $entityManager->flush();
+
+            $this->logger->info('Usuario creado exitosamente', ['user_id' => $user->getId()]);
+
+            return $this->json([
+                'message' => 'Usuario creado exitosamente',
+                'id' => $user->getId()
+            ], JsonResponse::HTTP_CREATED);
+        } catch (\Exception $e) {
+            $this->logger->error('Error al crear usuario: ' . $e->getMessage(), [
+                'exception' => $e,
+                'data' => $data ?? null
+            ]);
+            return $this->json([
+                'error' => 'Error al crear el usuario: ' . $e->getMessage()
+            ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[Route('/flights/{id}', methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function deleteFlight(int $id, EntityManagerInterface $entityManager): JsonResponse
+    {
+        try {
+            $flight = $this->flightRepository->find($id);
+
+            if (!$flight) {
+                $this->logger->warning('Intento de eliminar vuelo no encontrado', ['flight_id' => $id]);
+                return $this->json(['error' => 'Vuelo no encontrado'], JsonResponse::HTTP_NOT_FOUND);
+            }
+
+            // Verificar si el vuelo tiene reservas asociadas
+            if ($flight->getReservations()->count() > 0) {
+                $this->logger->warning('Intento de eliminar vuelo con reservas', ['flight_id' => $id]);
+                return $this->json(['error' => 'No se puede eliminar un vuelo con reservas activas'], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            $entityManager->remove($flight);
+            $entityManager->flush();
+
+            $this->logger->info('Vuelo eliminado exitosamente', ['flight_id' => $id]);
+
+            return $this->json(['message' => 'Vuelo eliminado exitosamente'], JsonResponse::HTTP_OK);
+        } catch (\Exception $e) {
+            $this->logger->error('Error al eliminar vuelo: ' . $e->getMessage(), ['exception' => $e, 'flight_id' => $id]);
+            return $this->json(['error' => 'Error al eliminar el vuelo'], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -174,6 +369,44 @@ class AdminController extends AbstractController
         } catch (\Exception $e) {
             $this->logger->error('Error al obtener reservas: ' . $e->getMessage(), ['exception' => $e]);
             return $this->json(['error' => 'Error al obtener reservas'], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[Route('/reservations/{id}', methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function deleteReservation(int $id, EntityManagerInterface $entityManager, PayRepository $payRepository): JsonResponse
+    {
+        try {
+            $reservation = $this->reservationsRepository->find($id);
+
+            if (!$reservation) {
+                $this->logger->warning('Intento de eliminar reserva no encontrada', ['reservation_id' => $id]);
+                return $this->json(['error' => 'Reserva no encontrada'], JsonResponse::HTTP_NOT_FOUND);
+            }
+
+            // Buscar y eliminar el registro asociado en la tabla pay, si existe
+            $pay = $payRepository->findOneBy(['reservation' => $reservation]);
+            if ($pay) {
+                $entityManager->remove($pay);
+                $this->logger->info('Registro de pago eliminado', ['pay_id' => $pay->getId(), 'reservation_id' => $id]);
+            }
+
+            // Disociar la relación con passengers estableciendo passengers_id a NULL
+            if ($reservation->getPassengers()) {
+                $reservation->setPassengers(null);
+                $this->logger->info('Relación con passengers disociada', ['reservation_id' => $id]);
+            }
+
+            // Eliminar la reserva
+            $entityManager->remove($reservation);
+            $entityManager->flush();
+
+            $this->logger->info('Reserva eliminada exitosamente', ['reservation_id' => $id]);
+
+            return $this->json(['message' => 'Reserva eliminada exitosamente'], JsonResponse::HTTP_OK);
+        } catch (\Exception $e) {
+            $this->logger->error('Error al eliminar reserva: ' . $e->getMessage(), ['exception' => $e, 'reservation_id' => $id]);
+            return $this->json(['error' => 'Error al eliminar la reserva: ' . $e->getMessage()], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 

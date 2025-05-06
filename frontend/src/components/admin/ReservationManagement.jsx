@@ -8,6 +8,7 @@ const ReservationManagement = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     const columns = [
         { field: 'id', header: 'ID' },
@@ -20,6 +21,9 @@ const ReservationManagement = () => {
 
     const fetchReservations = async (page = 1) => {
         try {
+            setLoading(true);
+            setError(null);
+
             const token = Cookies.get('jwt_token');
             if (!token) {
                 throw new Error('No authentication token found');
@@ -27,36 +31,49 @@ const ReservationManagement = () => {
 
             const headers = {
                 'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
             };
 
             // Use the correct endpoint for reservations
-            const response = await fetch(`http://127.0.0.1:8000/api/admin/bookings?page=${page}`, {
+            const response = await fetch(`http://127.0.0.1:8000/api/admin/reservations?page=${page}&limit=10`, {
+                method: 'GET',
                 headers,
                 credentials: 'include'
             });
 
             if (!response.ok) {
-                throw new Error('Failed to fetch reservations');
+                const errorData = await response.json().catch(() => ({}));
+                if (response.status === 401) {
+                    throw new Error('Unauthorized. Please log in again.');
+                } else if (response.status === 500) {
+                    throw new Error('Server error. Please try again later.');
+                }
+                throw new Error(errorData.error || 'Failed to fetch reservations');
             }
 
             const data = await response.json();
-            
-            // Transform the data to match the database structure
-            const formattedData = data.map(booking => ({
+
+            if (!data.items || !Array.isArray(data.items)) {
+                throw new Error('Invalid response format from server');
+            }
+
+            // Transform the data to match the expected structure
+            const formattedData = data.items.map(booking => ({
                 id: booking.id,
-                flightNumber: `${booking.flight?.origin} - ${booking.flight?.destination} (${booking.flight?.flightNumber})`,
-                username: `${booking.passenger?.firstName} ${booking.passenger?.lastName}`,
-                status: booking.status,
-                totalPrice: formatPrice(booking.totalAmount),
-                createdAt: formatDate(booking.bookingDate)
+                flightNumber: booking.flightNumber || 'N/A',
+                username: booking.username || 'N/A',
+                status: booking.status || 'N/A',
+                totalPrice: booking.totalPrice ? formatPrice(booking.totalPrice) : 'N/A',
+                createdAt: booking.reservationDate ? formatDate(booking.reservationDate) : 'N/A'
             }));
 
             setReservations(formattedData);
-            setTotalPages(Math.ceil(formattedData.length / 10));
+            setTotalPages(data.totalPages || 1);
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error fetching reservations:', error);
             setError(error.message);
+            setReservations([]);
         } finally {
             setLoading(false);
         }
@@ -93,22 +110,29 @@ const ReservationManagement = () => {
         if (window.confirm('Are you sure you want to delete this reservation?')) {
             try {
                 const token = Cookies.get('jwt_token');
-                const response = await fetch(`http://127.0.0.1:8000/api/user/flights/${reservation.id}`, {
+                if (!token) {
+                    throw new Error('No authentication token found');
+                }
+
+                const response = await fetch(`http://127.0.0.1:8000/api/admin/reservations/${reservation.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
                     },
                     credentials: 'include'
                 });
-                
-                if (response.ok) {
-                    fetchReservations(currentPage);
-                } else {
-                    throw new Error('Failed to delete reservation');
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Failed to delete reservation');
                 }
+
+                fetchReservations(currentPage);
             } catch (error) {
                 console.error('Error deleting reservation:', error);
+                setError(error.message);
             }
         }
     };
@@ -121,8 +145,17 @@ const ReservationManagement = () => {
         <div className="space-y-6">
             <h2 className="text-2xl font-semibold text-gray-800">Reservation Management</h2>
 
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                    {error}
+                </div>
+            )}
+
             {loading ? (
-                <div className="text-center">Loading...</div>
+                <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
+                    <p className="mt-4 text-amber-700">Loading reservations...</p>
+                </div>
             ) : (
                 <>
                     <DataTable 

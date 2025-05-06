@@ -15,6 +15,8 @@ import FlightManagement from '../components/admin/FlightManagement';
 import ReservationManagement from '../components/admin/ReservationManagement';
 import Statistics from '../components/admin/Statistics';
 import Settings from '../components/admin/Settings';
+import AddFlight from "../components/admin/AddFlight";
+import AddUser from '../components/admin/AddUser';
 
 const router = createBrowserRouter([
     {
@@ -58,10 +60,12 @@ const router = createBrowserRouter([
                         children: [
                             { index: true, element: <Dashboard /> },
                             { path: "users", element: <UserManagement /> },
+                            { path: "users/new", element: <AddUser /> },
                             { path: "flights", element: <FlightManagement /> },
                             { path: "reservations", element: <ReservationManagement /> },
                             { path: "statistics", element: <Statistics /> },
-                            { path: "settings", element: <Settings /> }
+                            { path: "settings", element: <Settings /> },
+                            { path: "flights/new", element: <AddFlight /> },
                         ]
                     }
                 ]

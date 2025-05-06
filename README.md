@@ -1,3 +1,3 @@
 - Intentar hacer que los vuelos sean periodicos y asi no caduquen
-- Vista del administrador 
 - mirar stripe para los pagos
+- cuando se recargue la pagina que no te lleve al login

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
 import DataTable from './DataTable';
 import Pagination from './Pagination';
+import { useNavigate } from 'react-router-dom';
 
 const UserManagement = () => {
+    const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -56,10 +58,6 @@ const UserManagement = () => {
         fetchUsers(currentPage);
     }, [currentPage]);
 
-    const handleEdit = (user) => {
-        console.log('Edit user:', user);
-    };
-
     const handleDelete = async (user) => {
         if (window.confirm('Are you sure you want to delete this user?')) {
             try {
@@ -90,16 +88,18 @@ const UserManagement = () => {
         }
     };
 
-    const handleView = (user) => {
-        console.log('View user:', user);
+    const handleAddUser = () => {
+        navigate('/admin/users/new');
     };
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-semibold text-gray-800">User Management</h2>
-                <button className="bg-amber-500 text-white px-4 py-2 rounded-md hover:bg-amber-600">
-                    Add New User
+                <button 
+                    onClick={handleAddUser}
+                    className="bg-amber-500 text-white px-4 py-2 rounded-md hover:bg-amber-600">
+                    Añadir nuevo usuario
                 </button>
             </div>
 
@@ -112,9 +112,7 @@ const UserManagement = () => {
                     <DataTable 
                         columns={columns}
                         data={users}
-                        onEdit={handleEdit}
                         onDelete={handleDelete}
-                        onView={handleView}
                     />
                     <Pagination 
                         currentPage={currentPage}
