@@ -80,6 +80,17 @@ class FlightRepository extends ServiceEntityRepository
         }
     }
 
+    public function findFlightsBeforeDate(\DateTimeInterface $date): array
+    {
+        return $this->createQueryBuilder('f')
+            ->leftJoin('f.reservations', 'r')
+            ->andWhere('f.departure_date < :date')
+            ->andWhere('r.id IS NULL') // Filtra vuelos sin reservas
+            ->setParameter('date', $date)
+            ->getQuery()
+            ->getResult();
+    }
+
     // Add these methods to your existing FlightRepository class
 
     public function countActiveFlights(): int

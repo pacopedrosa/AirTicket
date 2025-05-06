@@ -226,7 +226,7 @@ class FlightApiController extends AbstractController
             $reservation = new Reservations();
             $reservation->setFlight($flight);
             $reservation->setUser($this->getUser());
-            $reservation->setState('pending'); // Initial state
+            $reservation->setState('confirmed'); // Initial state
             $reservation->setPaymentMethod($paymentMethod);
             $reservation->setTotalPrice($flight->getBasePrice());
             $reservation->setReservationDate(new \DateTime());
@@ -237,7 +237,7 @@ class FlightApiController extends AbstractController
             $payment->setAmount($flight->getBasePrice());
             $payment->setPaymentMethod($paymentMethod);
             $payment->setPaymentDate(new \DateTime());
-            $payment->setState('pending');
+            $payment->setState('confirmed');
     
             // Update flight seats
             $flight->setSeatsAvailable($flight->getSeatsAvailable() - 1);
@@ -291,6 +291,60 @@ class FlightApiController extends AbstractController
         } catch (\Exception $e) {
             return new JsonResponse(
                 ['error' => 'Error confirming payment: ' . $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    #[Route('/update-dates', name: 'api_flights_update_dates', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function updateFlightDates(): JsonResponse
+    {
+        try {
+            // Obtener la fecha actual
+            $today = new \DateTime('today');
+
+            // Buscar vuelos con departure_date anterior a hoy y sin reservas
+            $flights = $this->flightRepository->findFlightsBeforeDate($today);
+
+            if (empty($flights)) {
+                return new JsonResponse(
+                    ['message' => 'No se encontraron vuelos sin reservas con fechas anteriores a hoy.'],
+                    Response::HTTP_OK
+                );
+            }
+
+            $updatedCount = 0;
+            foreach ($flights as $flight) {
+                // Calcular la diferencia entre departure_date y arrival_date
+                $interval = $flight->getDepartureDate()->diff($flight->getArrivalDate());
+
+                // Sumar un mes a departure_date
+                $newDepartureDate = clone $flight->getDepartureDate();
+                $newDepartureDate->modify('+1 month');
+
+                // Calcular nueva arrival_date manteniendo la diferencia
+                $newArrivalDate = clone $newDepartureDate;
+                $newArrivalDate->add($interval);
+
+                // Actualizar las fechas
+                $flight->setDepartureDate($newDepartureDate);
+                $flight->setArrivalDate($newArrivalDate);
+
+                $this->entityManager->persist($flight);
+                $updatedCount++;
+            }
+
+            // Guardar los cambios en la base de datos
+            $this->entityManager->flush();
+
+            return new JsonResponse(
+                ['message' => sprintf('Se actualizaron %d vuelos.', $updatedCount)],
+                Response::HTTP_OK
+            );
+        } catch (\Exception $e) {
+            return new JsonResponse(
+                ['error' => 'Error al actualizar las fechas de los vuelos: ' . $e->getMessage()],
                 Response::HTTP_INTERNAL_SERVER_ERROR
             );
         }

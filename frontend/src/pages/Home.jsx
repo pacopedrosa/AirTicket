@@ -3,14 +3,11 @@ import FlightSearch from '../components/FlightSearch';
 import DashboardStats from '../components/DashboardStats';
 import FlightList from '../components/FlightList';
 import { useSearchParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Cookies from 'js-cookie';
 
 const Home = () => {
     const [searchParams] = useSearchParams();
-    const [flights, setFlights] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchFlights = async () => {
