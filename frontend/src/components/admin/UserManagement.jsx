@@ -65,7 +65,7 @@ const UserManagement = () => {
                 if (!token) {
                     throw new Error('No se encontró el token de autenticación en la cookie');
                 }
-
+    
                 const response = await fetch(`http://127.0.0.1:8000/api/admin/deleteUser/${user.id}`, {
                     method: 'DELETE',
                     headers: {
@@ -74,16 +74,19 @@ const UserManagement = () => {
                     },
                     credentials: 'include'
                 });
-
+    
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || 'Error al eliminar usuario');
+                    throw new Error(errorData.error || `Error del servidor: ${response.status}`);
                 }
-
+    
+                // Mostrar mensaje de éxito (opcional)
+                setError(null); // Limpiar cualquier error previo
+                alert('Usuario eliminado exitosamente');
                 fetchUsers(currentPage);
             } catch (error) {
-                console.error('Error deleting user:', error);
-                setError(error.message);
+                console.error('Error deleting user:', error.message);
+                setError(error.message); // Mostrar el mensaje de error específico
             }
         }
     };

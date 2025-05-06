@@ -30,10 +30,12 @@ class AdminController extends AbstractController
         UserRepository $userRepository,
         FlightRepository $flightRepository,
         ReservationsRepository $reservationsRepository,
+        PayRepository $payRepository,
         LoggerInterface $logger
     ) {
         $this->userRepository = $userRepository;
         $this->flightRepository = $flightRepository;
+        $this->payRepository = $payRepository;
         $this->reservationsRepository = $reservationsRepository;
         $this->logger = $logger;
     }
@@ -592,27 +594,71 @@ class AdminController extends AbstractController
         }
     }
 
-    #[Route('/deleteUser/:id', methods: ['DELETE'])]
+    #[Route('/deleteUser/{id}', methods: ['DELETE'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function deleteUser(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function deleteUser(int $id, EntityManagerInterface $entityManager): JsonResponse
     {
         try {
-            $data = json_decode($request->getContent(), true);
-            $userId = $data['id'];
+            $this->logger->info('Iniciando eliminación de usuario', ['user_id' => $id]);
 
-            $user = $this->userRepository->find($userId);
-
+            $user = $this->userRepository->find($id);
             if (!$user) {
+                $this->logger->warning('Usuario no encontrado', ['user_id' => $id]);
                 return $this->json(['error' => 'Usuario no encontrado'], JsonResponse::HTTP_NOT_FOUND);
             }
+
+            // Obtener todas las reservas del usuario
+            $reservations = $user->getReservations();
+            $this->logger->info('Reservas encontradas para el usuario', [
+                'user_id' => $id,
+                'reservations_count' => $reservations->count()
+            ]);
+
+            // Eliminar registros relacionados
+            foreach ($reservations as $reservation) {
+                // Eliminar el registro Pay asociado, si existe
+                $pay = $this->payRepository->findOneBy(['reservation' => $reservation]);
+                if ($pay) {
+                    $entityManager->remove($pay);
+                    $this->logger->info('Registro Pay eliminado', [
+                        'pay_id' => $pay->getId(),
+                        'reservation_id' => $reservation->getId(),
+                        'user_id' => $id
+                    ]);
+                }
+
+                // Desvincular el pasajero, si existe
+                if ($reservation->getPassengers()) {
+                    $reservation->setPassengers(null);
+                    $this->logger->info('Pasajero desvinculado de la reserva', [
+                        'reservation_id' => $reservation->getId(),
+                        'user_id' => $id
+                    ]);
+                }
+
+                // Eliminar la reserva
+                $entityManager->remove($reservation);
+                $this->logger->info('Reserva eliminada', [
+                    'reservation_id' => $reservation->getId(),
+                    'user_id' => $id
+                ]);
+            }
+
+            // Eliminar el usuario
             $entityManager->remove($user);
+            $this->logger->info('Eliminando usuario', ['user_id' => $id]);
+
+            // Confirmar todos los cambios en la base de datos
             $entityManager->flush();
 
-            return $this->json(['message' => 'Usuario eliminado exitosamente'], JsonResponse::HTTP_OK);
-        }catch (\Exception $e) {
-            $this->logger->error('Error al eliminar usuario: '. $e->getMessage(), ['exception' => $e]);
-            return $this->json(['error' => 'Error al eliminar el usuario'], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+            $this->logger->info('Usuario y registros relacionados eliminados exitosamente', ['user_id' => $id]);
+            return $this->json(['message' => 'Usuario y registros relacionados eliminados exitosamente'], JsonResponse::HTTP_OK);
+        } catch (\Exception $e) {
+            $this->logger->error('Error al eliminar usuario: ' . $e->getMessage(), [
+                'exception' => $e,
+                'user_id' => $id
+            ]);
+            return $this->json(['error' => 'Error al eliminar el usuario: ' . $e->getMessage()], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
         }
-        
     }
 }
