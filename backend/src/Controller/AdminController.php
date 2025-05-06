@@ -174,6 +174,8 @@ class AdminController extends AbstractController
         }
     }
 
+
+    
     #[Route('/flights', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
     public function getFlights(Request $request): JsonResponse
@@ -588,5 +590,29 @@ class AdminController extends AbstractController
             $this->logger->error('Error en getDashboardStats: ' . $e->getMessage(), ['exception' => $e]);
             return $this->json(['error' => 'Error al obtener estadísticas del dashboard: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    #[Route('/deleteUser/:id', methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function deleteUser(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    {
+        try {
+            $data = json_decode($request->getContent(), true);
+            $userId = $data['id'];
+
+            $user = $this->userRepository->find($userId);
+
+            if (!$user) {
+                return $this->json(['error' => 'Usuario no encontrado'], JsonResponse::HTTP_NOT_FOUND);
+            }
+            $entityManager->remove($user);
+            $entityManager->flush();
+
+            return $this->json(['message' => 'Usuario eliminado exitosamente'], JsonResponse::HTTP_OK);
+        }catch (\Exception $e) {
+            $this->logger->error('Error al eliminar usuario: '. $e->getMessage(), ['exception' => $e]);
+            return $this->json(['error' => 'Error al eliminar el usuario'], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+        }
+        
     }
 }

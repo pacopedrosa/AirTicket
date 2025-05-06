@@ -62,49 +62,9 @@ const Dashboard = () => {
     if (loading) return <div className="flex justify-center items-center h-full">Loading...</div>;
     if (error) return <div className="text-red-500">Error: {error}</div>;
 
-    const statsConfig = [
-        { 
-            title: 'Total Users', 
-            value: stats.totalUsers, 
-            icon: FaUsers,
-            color: 'bg-blue-500' 
-        },
-        { 
-            title: 'Active Flights', 
-            value: stats.activeFlights, 
-            icon: FaPlane,
-            color: 'bg-green-500' 
-        },
-        { 
-            title: 'Total Reservations', 
-            value: stats.totalReservations, 
-            icon: FaTicketAlt,
-            color: 'bg-purple-500' 
-        },
-        { 
-            title: 'Monthly Revenue', 
-            value: `€${stats.monthlyRevenue.toFixed(2)}`, 
-            icon: FaEuroSign,
-            color: 'bg-yellow-500' 
-        }
-    ];
-
     return (
         <div className="p-6">
             <h2 className="text-2xl font-semibold text-gray-800 mb-6">Dashboard</h2>
-            
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {statsConfig.map((stat, index) => (
-                    <StatsCard
-                        key={index}
-                        title={stat.title}
-                        value={stat.value}
-                        icon={stat.icon}
-                        color={stat.color}
-                    />
-                ))}
-            </div>
 
             {/* Recent Bookings Table */}
             <div className="bg-white rounded-lg shadow-lg p-6">

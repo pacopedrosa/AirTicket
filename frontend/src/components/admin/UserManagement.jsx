@@ -66,7 +66,7 @@ const UserManagement = () => {
                     throw new Error('No se encontró el token de autenticación en la cookie');
                 }
 
-                const response = await fetch(`http://127.0.0.1:8000/api/admin/users/${user.id}`, {
+                const response = await fetch(`http://127.0.0.1:8000/api/admin/deleteUser/${user.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,
