@@ -95,7 +95,7 @@ class AdminController extends AbstractController
             // Reservas totales (actual)
             $totalReservations = $this->reservationsRepository->count(['state' => 'CONFIRMED']);
 
-            // Reservas totales (anterior)
+            // Reservas totales (mes anterior)
             $lastMonthReservations = $this->reservationsRepository->createQueryBuilder('r')
                 ->select('COUNT(r)')
                 ->where('r.state = :state')

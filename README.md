@@ -1,4 +1,2 @@
 - mirar stripe para los pagos
-- La informacion de las tarjetas funcionen correctamente
-- realizar comando para que cree vuelos aleatorios cogiendo todos los origin y destinos y le asigne una fecha y hora aleatoria posterior a hoy, siendo la hora primera menor a la segunda, ademas si todo acaba funcional hacer cron tab a los comandos para que se ejecuten cada cierto tiempo
 - cuando seleccionas un vuelo debes poder cojer los articulos extra
