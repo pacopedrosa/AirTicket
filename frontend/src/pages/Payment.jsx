@@ -1,24 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// Inicializa Stripe con la clave pública
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 const Payment = () => {
     const { flightId } = useParams();
     const navigate = useNavigate();
+    const stripe = useStripe();
+    const elements = useElements();
     const [flight, setFlight] = useState(null);
     const [paymentMethods, setPaymentMethods] = useState([]);
     const [selectedMethod, setSelectedMethod] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [paymentDetails, setPaymentDetails] = useState({
-        cardNumber: '',
-        cardHolder: '',
-        expiryDate: '',
-        cvv: ''
-    });
     const [extras, setExtras] = useState([]);
     const [selectedExtras, setSelectedExtras] = useState({});
     const [totalPrice, setTotalPrice] = useState(0);
+    const [clientSecret, setClientSecret] = useState('');
+    const [extraReservationId, setExtraReservationId] = useState(null);
+    const [postalCode, setPostalCode] = useState('');
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false); // Nuevo estado para manejar el proceso de pago
 
     useEffect(() => {
         const fetchData = async () => {
@@ -29,11 +34,8 @@ const Payment = () => {
                     return;
                 }
 
-                // Fetch flight details
                 const flightResponse = await fetch(`http://localhost:8000/api/flights/${flightId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` },
                 });
 
                 if (!flightResponse.ok) {
@@ -44,11 +46,8 @@ const Payment = () => {
                 setFlight(flightData);
                 setTotalPrice(flightData.base_price);
 
-                // Fetch payment methods
                 const methodsResponse = await fetch('http://localhost:8000/api/payment-methods', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` },
                 });
 
                 if (!methodsResponse.ok) {
@@ -58,11 +57,8 @@ const Payment = () => {
                 const methodsData = await methodsResponse.json();
                 setPaymentMethods(methodsData);
 
-                // Fetch extras
                 const extrasResponse = await fetch('http://localhost:8000/api/extras', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` },
                 });
 
                 if (!extrasResponse.ok) {
@@ -87,12 +83,11 @@ const Payment = () => {
                 ...prev,
                 [extraId]: quantity
             };
-            
-            // Calcular nuevo precio total
+
             const extrasTotal = extras.reduce((sum, extra) => {
                 return sum + (extra.price * (newExtras[extra.id] || 0));
             }, 0);
-            
+
             setTotalPrice(flight.base_price + extrasTotal);
             return newExtras;
         });
@@ -100,15 +95,47 @@ const Payment = () => {
 
     const handlePayment = async (e) => {
         e.preventDefault();
+
+        if (!stripe || !elements) {
+            setError('Stripe no está inicializado. Por favor, intenta de nuevo.');
+            return;
+        }
+
+        if (!selectedMethod || (selectedMethod !== 'credit_card' && selectedMethod !== 'debit_card')) {
+            setError('Por favor, selecciona un método de pago válido (tarjeta de crédito o débito).');
+            return;
+        }
+
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) {
+            setError('Error al cargar los detalles de la tarjeta. Por favor, intenta de nuevo.');
+            return;
+        }
+
+        if (!postalCode) {
+            setError('Por favor, ingresa un código postal válido.');
+            return;
+        }
+
+        // Evitar re-renderizados mientras se procesa el pago
+        setIsProcessingPayment(true);
+
         try {
             const token = Cookies.get('jwt_token');
-            
-            // Primero reservar los extras
+            if (!token) {
+                console.error('No hay token de autenticación');
+                navigate('/login');
+                return;
+            }
+            console.log('Token presente:', !!token);
+            console.log('Iniciando proceso de pago...');
+
             const selectedExtrasArray = Object.entries(selectedExtras)
                 .filter(([_, quantity]) => quantity > 0)
                 .map(([id, quantity]) => ({ id: parseInt(id), quantity }));
 
             if (selectedExtrasArray.length > 0) {
+                console.log('Reservando extras:', selectedExtrasArray);
                 const extrasResponse = await fetch('http://localhost:8000/api/extras/reserve', {
                     method: 'POST',
                     headers: {
@@ -119,29 +146,90 @@ const Payment = () => {
                 });
 
                 if (!extrasResponse.ok) {
-                    throw new Error('Error al reservar los extras');
+                    const errorData = await extrasResponse.json();
+                    console.error('Error al reservar extras:', errorData);
+                    throw new Error(errorData.error || 'Error al reservar los extras');
                 }
+
+                const extrasData = await extrasResponse.json();
+                console.log('Extras reservados:', extrasData);
+                setExtraReservationId(extrasData.id);
             }
 
-            const response = await fetch(`http://localhost:8000/api/flights/${flightId}/book`, {
+            console.log('Creando PaymentIntent con monto:', totalPrice * 100);
+            const paymentIntentResponse = await fetch('http://localhost:8000/api/flights/payment/create-payment-intent', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    payment_method: selectedMethod,
-                    payment_details: paymentDetails
+                    amount: Math.round(totalPrice * 100),
+                    currency: 'eur',
+                    flight_id: flightId,
                 })
             });
 
-            if (!response.ok) {
-                throw new Error('Error al procesar el pago');
+            if (!paymentIntentResponse.ok) {
+                const errorData = await paymentIntentResponse.json();
+                console.error('Error al crear PaymentIntent:', errorData);
+                throw new Error(errorData.error || 'Error al crear el PaymentIntent');
             }
 
-            navigate('/my-flights');
+            const paymentIntentData = await paymentIntentResponse.json();
+            console.log('PaymentIntent creado:', paymentIntentData);
+            setClientSecret(paymentIntentData.clientSecret);
+
+            console.log('Confirmando pago con Stripe...');
+            const { error, paymentIntent } = await stripe.confirmCardPayment(paymentIntentData.clientSecret, {
+                payment_method: {
+                    card: cardElement,
+                    billing_details: {
+                        name: 'Cliente de prueba',
+                        address: {
+                            postal_code: postalCode,
+                        },
+                    },
+                },
+            });
+
+            if (error) {
+                console.error('Error de Stripe:', error);
+                setError(error.message);
+                setIsProcessingPayment(false);
+                return;
+            }
+
+            console.log('Pago confirmado:', paymentIntent);
+
+            if (paymentIntent.status === 'succeeded') {
+                console.log('Pago exitoso, procesando reserva...');
+                const bookResponse = await fetch(`http://localhost:8000/api/flights/${flightId}/book`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        payment_intent_id: paymentIntent.id,
+                        extra_reservation_id: extraReservationId,
+                    })
+                });
+
+                if (!bookResponse.ok) {
+                    const errorData = await bookResponse.json();
+                    console.error('Error al procesar la reserva:', errorData);
+                    throw new Error(errorData.error || 'Error al procesar la reserva');
+                }
+
+                const bookData = await bookResponse.json();
+                console.log('Reserva procesada:', bookData);
+                navigate('/my-flights');
+            }
         } catch (error) {
-            setError('Error al procesar el pago. Por favor, inténtalo de nuevo.');
+            console.error('Error completo en el proceso de pago:', error);
+            setError(error.message || 'Error al procesar el pago. Por favor, inténtalo de nuevo.');
+            setIsProcessingPayment(false);
         }
     };
 
@@ -170,78 +258,49 @@ const Payment = () => {
         </div>
     );
 
-    const handlePaymentDetailsChange = (e) => {
-        setPaymentDetails({
-            ...paymentDetails,
-            [e.target.name]: e.target.value
-        });
-    };
-
     const renderPaymentFields = () => {
-        if (selectedMethod === 'credit_card' || selectedMethod === 'debit_card') {
-            return (
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-amber-700 mb-2">
-                            Número de Tarjeta
-                        </label>
-                        <input
-                            type="text"
-                            name="cardNumber"
-                            value={paymentDetails.cardNumber}
-                            onChange={handlePaymentDetailsChange}
-                            className="w-full px-3 py-2 border border-amber-300 rounded-md"
-                            placeholder="1234 5678 9012 3456"
-                            maxLength="19"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-amber-700 mb-2">
-                            Titular de la Tarjeta
-                        </label>
-                        <input
-                            type="text"
-                            name="cardHolder"
-                            value={paymentDetails.cardHolder}
-                            onChange={handlePaymentDetailsChange}
-                            className="w-full px-3 py-2 border border-amber-300 rounded-md"
-                            placeholder="NOMBRE APELLIDOS"
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-amber-700 mb-2">
-                                Fecha de Caducidad
-                            </label>
-                            <input
-                                type="text"
-                                name="expiryDate"
-                                value={paymentDetails.expiryDate}
-                                onChange={handlePaymentDetailsChange}
-                                className="w-full px-3 py-2 border border-amber-300 rounded-md"
-                                placeholder="MM/YY"
-                                maxLength="5"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-amber-700 mb-2">
-                                CVV
-                            </label>
-                            <input
-                                type="text"
-                                name="cvv"
-                                value={paymentDetails.cvv}
-                                onChange={handlePaymentDetailsChange}
-                                className="w-full px-3 py-2 border border-amber-300 rounded-md"
-                                placeholder="123"
-                                maxLength="3"
-                            />
-                        </div>
-                    </div>
-                </div>
-            );
+        if (!selectedMethod || (selectedMethod !== 'credit_card' && selectedMethod !== 'debit_card')) {
+            return null;
         }
-        return null;
+
+        return (
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-amber-700 mb-2">
+                        Detalles de la Tarjeta
+                    </label>
+                    <CardElement
+                        options={{
+                            style: {
+                                base: {
+                                    fontSize: '16px',
+                                    color: '#424770',
+                                    '::placeholder': {
+                                        color: '#aab7c4',
+                                    },
+                                },
+                                invalid: {
+                                    color: '#9e2146',
+                                },
+                            },
+                        }}
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-amber-700 mb-2">
+                        Código Postal
+                    </label>
+                    <input
+                        type="text"
+                        value={postalCode}
+                        onChange={(e) => setPostalCode(e.target.value)}
+                        placeholder="Ej. 28001"
+                        className="w-full px-3 py-2 border border-amber-300 rounded-md"
+                        required
+                    />
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -262,7 +321,7 @@ const Payment = () => {
                             <div className="text-center mb-6">
                                 <h2 className="text-2xl font-bold text-amber-800">Detalles del Pago</h2>
                                 <div className="text-xl font-semibold text-amber-600 mt-2">
-                                    Total a Pagar: {totalPrice}€
+                                    Total a Pagar: {totalPrice.toFixed(2)}€
                                 </div>
                             </div>
 
@@ -294,25 +353,26 @@ const Payment = () => {
                                     >
                                         <option value="">Selecciona un método de pago</option>
                                         {paymentMethods.map(method => (
-                                            <option key={method.id} value={method.code}>
+                                            <option key={method.id} value={method.id}>
                                                 {method.name}
                                             </option>
                                         ))}
                                     </select>
                                 </div>
 
-                                {selectedMethod && renderPaymentFields()}
+                                {renderPaymentFields()}
 
                                 <div className="mt-8">
                                     <button
                                         type="submit"
                                         className="w-full bg-amber-500 text-white py-3 px-6 rounded-md hover:bg-amber-600 transition duration-300"
+                                        disabled={isProcessingPayment || !stripe}
                                     >
-                                        Pagar {totalPrice}€
+                                        {isProcessingPayment ? 'Procesando...' : `Pagar ${totalPrice.toFixed(2)}€`}
                                     </button>
                                     <div className="mt-4 p-4 bg-amber-50 rounded-lg text-center">
                                         <p className="text-lg font-semibold text-amber-800">
-                                            Total a Pagar: {totalPrice}€
+                                            Total a Pagar: {totalPrice.toFixed(2)}€
                                         </p>
                                     </div>
                                 </div>
@@ -329,4 +389,11 @@ const Payment = () => {
     );
 };
 
-export default Payment;
+// Envuelve el componente en Elements para usar Stripe
+const PaymentWithStripe = (props) => (
+    <Elements stripe={stripePromise}>
+        <Payment {...props} />
+    </Elements>
+);
+
+export default PaymentWithStripe;

@@ -17,6 +17,10 @@ import Statistics from '../components/admin/Statistics';
 import Settings from '../components/admin/Settings';
 import AddFlight from "../components/admin/AddFlight";
 import AddUser from '../components/admin/AddUser';
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 const router = createBrowserRouter([
     {
@@ -51,7 +55,9 @@ const router = createBrowserRouter([
                     },
                     {
                         path: "payment/:flightId",
-                        element: <Payment />,
+                        element: <Elements stripe={stripePromise}>
+                            <Payment />
+                        </Elements>,
                     },
                     // Admin routes
                     {

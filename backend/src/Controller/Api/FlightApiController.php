@@ -2,11 +2,14 @@
 
 namespace App\Controller\Api;
 
+use App\Entity\ExtraReservation;
 use App\Entity\Flight;
 use App\Entity\Reservations;  // Add this import
 use App\Entity\Pay;
 use App\Repository\FlightRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Stripe\PaymentIntent;
+use Stripe\Stripe;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -196,20 +199,58 @@ class FlightApiController extends AbstractController
         }
     }
 
+    #[Route('/payment/create-payment-intent', name: 'api_create_payment_intent', methods: ['POST'])]
+    public function createPaymentIntent(Request $request): JsonResponse
+    {
+    try {
+        Stripe::setApiKey($this->getParameter('stripe_secret_key'));
+
+        $data = json_decode($request->getContent(), true);
+        $amount = $data['amount'] ?? null; // En centavos
+        $currency = $data['currency'] ?? 'eur';
+
+        if (!$amount || $amount <= 0) {
+            return new JsonResponse(['error' => 'Invalid amount'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $paymentIntent = PaymentIntent::create([
+            'amount' => $amount,
+            'currency' => $currency,
+            'payment_method_types' => ['card'],
+            'metadata' => [
+                'flight_id' => $data['flight_id'] ?? null,
+                'user_id' => $this->getUser()->getId(),
+            ],
+        ]);
+
+        return new JsonResponse(['clientSecret' => $paymentIntent->client_secret], Response::HTTP_OK);
+    } catch (\Exception $e) {
+        return new JsonResponse(['error' => 'Error creating payment intent: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
+
     #[Route('/{id}/book', name: 'api_flight_book', methods: ['POST'])]
-    public function bookFlight(
-        Flight $flight, 
-        Request $request, 
-        EntityManagerInterface $entityManager
-    ): JsonResponse
+    public function bookFlight(Flight $flight, Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
         try {
             $data = json_decode($request->getContent(), true);
-            $paymentMethod = $data['payment_method'] ?? null;
+            $paymentIntentId = $data['payment_intent_id'] ?? null;
+            $extraReservationId = $data['extra_reservation_id'] ?? null;
     
-            if (!$paymentMethod) {
+            if (!$paymentIntentId) {
                 return new JsonResponse(
-                    ['error' => 'Payment method is required'],
+                    ['error' => 'Payment intent ID is required'],
+                    Response::HTTP_BAD_REQUEST
+                );
+            }
+    
+            // Verificar el PaymentIntent con Stripe
+            Stripe::setApiKey($this->getParameter('stripe_secret_key'));
+            $paymentIntent = PaymentIntent::retrieve($paymentIntentId);
+    
+            if ($paymentIntent->status !== 'succeeded') {
+                return new JsonResponse(
+                    ['error' => 'Payment not completed'],
                     Response::HTTP_BAD_REQUEST
                 );
             }
@@ -226,22 +267,33 @@ class FlightApiController extends AbstractController
             $reservation = new Reservations();
             $reservation->setFlight($flight);
             $reservation->setUser($this->getUser());
-            $reservation->setState('confirmed'); // Initial state
-            $reservation->setPaymentMethod($paymentMethod);
-            $reservation->setTotalPrice($flight->getBasePrice());
+            $reservation->setState('confirmed');
+            $reservation->setPaymentMethod('card'); // Stripe solo maneja tarjetas
+            $reservation->setTotalPrice($paymentIntent->amount / 100); // Convertir centavos a euros
             $reservation->setReservationDate(new \DateTime());
     
             // Create payment record
             $payment = new Pay();
             $payment->setReservation($reservation);
-            $payment->setAmount($flight->getBasePrice());
-            $payment->setPaymentMethod($paymentMethod);
+            $payment->setAmount($paymentIntent->amount); // En centavos
+            $payment->setPaymentMethod('card');
             $payment->setPaymentDate(new \DateTime());
-            $payment->setState('confirmed');
+            $payment->setState('completed');
+            $payment->setStripePaymentIntentId($paymentIntentId); // Guardar el ID del PaymentIntent
     
             // Update flight seats
             $flight->setSeatsAvailable($flight->getSeatsAvailable() - 1);
-            
+    
+            // Asocia los extras si existen
+            if ($extraReservationId) {
+                $extraReservation = $entityManager->getRepository(ExtraReservation::class)->find($extraReservationId);
+                if ($extraReservation) {
+                    $reservation->setExtraReservation($extraReservation);
+                    $reservation->setTotalPrice($reservation->getTotalPrice() + $extraReservation->getAmount());
+                    $payment->setAmount($payment->getAmount() + ($extraReservation->getAmount() * 100)); // Convertir a centavos
+                }
+            }
+    
             $entityManager->persist($reservation);
             $entityManager->persist($payment);
             $entityManager->flush();

@@ -18,7 +18,7 @@ class Pay
     private ?Reservations $reservation = null;
 
     #[ORM\Column]
-    private ?int $amount = null;
+    private ?int $amount = null; // En centavos (compatible con Stripe)
 
     #[ORM\Column(length: 255)]
     private ?string $payment_method = null;
@@ -28,6 +28,9 @@ class Pay
 
     #[ORM\Column(length: 255)]
     private ?string $state = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $stripePaymentIntentId = null; // Nuevo campo para Stripe
 
     public function getId(): ?int
     {
@@ -42,7 +45,6 @@ class Pay
     public function setReservation(?Reservations $reservation): static
     {
         $this->reservation = $reservation;
-
         return $this;
     }
 
@@ -54,7 +56,6 @@ class Pay
     public function setAmount(int $amount): static
     {
         $this->amount = $amount;
-
         return $this;
     }
 
@@ -66,7 +67,6 @@ class Pay
     public function setPaymentMethod(string $payment_method): static
     {
         $this->payment_method = $payment_method;
-
         return $this;
     }
 
@@ -78,7 +78,6 @@ class Pay
     public function setPaymentDate(\DateTimeInterface $payment_date): static
     {
         $this->payment_date = $payment_date;
-
         return $this;
     }
 
@@ -90,7 +89,17 @@ class Pay
     public function setState(string $state): static
     {
         $this->state = $state;
+        return $this;
+    }
 
+    public function getStripePaymentIntentId(): ?string
+    {
+        return $this->stripePaymentIntentId;
+    }
+
+    public function setStripePaymentIntentId(?string $stripePaymentIntentId): static
+    {
+        $this->stripePaymentIntentId = $stripePaymentIntentId;
         return $this;
     }
 }
