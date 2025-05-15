@@ -36,7 +36,7 @@ const ReservationManagement = () => {
             };
 
             // Use the correct endpoint for reservations
-            const response = await fetch(`http://127.0.0.1:8000/api/admin/reservations?page=${page}&limit=10`, {
+                const response = await fetch(`/api/admin/reservations?page=${page}&limit=10`, {
                 method: 'GET',
                 headers,
                 credentials: 'include'
@@ -114,7 +114,7 @@ const ReservationManagement = () => {
                     throw new Error('No authentication token found');
                 }
 
-                const response = await fetch(`http://127.0.0.1:8000/api/admin/reservations/${reservation.id}`, {
+                const response = await fetch(`/api/admin/reservations/${reservation.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,

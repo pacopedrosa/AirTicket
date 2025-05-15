@@ -38,7 +38,7 @@ const ActivityChart = () => {
                     throw new Error('No authentication token found');
                 }
 
-                const response = await fetch('http://127.0.0.1:8000/api/admin/dashboard/activity', {
+                const response = await fetch('/api/admin/dashboard/activity', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json',

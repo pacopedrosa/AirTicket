@@ -31,7 +31,7 @@ const FlightManagement = () => {
                 throw new Error('No se encontró el token de autenticación');
             }
 
-            const response = await fetch(`http://127.0.0.1:8000/api/admin/flights?page=${page}&limit=10`, {
+            const response = await fetch(`/api/admin/flights?page=${page}&limit=10`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -87,7 +87,7 @@ const FlightManagement = () => {
                     throw new Error('No se encontró el token de autenticación');
                 }
 
-                const response = await fetch(`http://127.0.0.1:8000/api/admin/flights/${flight.id}`, {
+                const response = await fetch(`/api/admin/flights/${flight.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,

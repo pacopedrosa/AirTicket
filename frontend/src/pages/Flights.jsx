@@ -32,7 +32,7 @@ const Flights = () => {
                 if (date) params.append('date', date);
 
                 const response = await fetch(
-                    `http://localhost:8000/api/flights${params.toString() ? `?${params.toString()}` : ''}`,
+                    `/api/flights${params.toString() ? `?${params.toString()}` : ''}`,
                     {
                         method: 'GET',
                         headers: {

@@ -23,7 +23,7 @@ const Home = () => {
                     console.log('Search params:', { origin, destination, date }); // Add this for debugging
                     
                     const response = await fetch(
-                        `http://127.0.0.1:8000/api/flights/search?origin=${origin}&destination=${destination}&date=${date}`,
+                        `/api/flights/search?origin=${origin}&destination=${destination}&date=${date}`,
                         {
                             headers: {
                                 'Authorization': `Bearer ${token}`,

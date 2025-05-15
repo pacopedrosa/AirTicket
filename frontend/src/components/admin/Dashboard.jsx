@@ -21,7 +21,7 @@ const Dashboard = () => {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch('http://127.0.0.1:8000/api/admin/dashboard', {
+            const response = await fetch('/api/admin/dashboard', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'

@@ -34,7 +34,7 @@ const Payment = () => {
                     return;
                 }
 
-                const flightResponse = await fetch(`http://localhost:8000/api/flights/${flightId}`, {
+                const flightResponse = await fetch(`/api/flights/${flightId}`, {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
 
@@ -46,7 +46,7 @@ const Payment = () => {
                 setFlight(flightData);
                 setTotalPrice(flightData.base_price);
 
-                const methodsResponse = await fetch('http://localhost:8000/api/payment-methods', {
+                const methodsResponse = await fetch('/api/payment-methods', {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
 
@@ -57,7 +57,7 @@ const Payment = () => {
                 const methodsData = await methodsResponse.json();
                 setPaymentMethods(methodsData);
 
-                const extrasResponse = await fetch('http://localhost:8000/api/extras', {
+                const extrasResponse = await fetch('/api/extras', {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
 
@@ -136,7 +136,7 @@ const Payment = () => {
 
             if (selectedExtrasArray.length > 0) {
                 console.log('Reservando extras:', selectedExtrasArray);
-                const extrasResponse = await fetch('http://localhost:8000/api/extras/reserve', {
+                const extrasResponse = await fetch('/api/extras/reserve', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -157,7 +157,7 @@ const Payment = () => {
             }
 
             console.log('Creando PaymentIntent con monto:', totalPrice * 100);
-            const paymentIntentResponse = await fetch('http://localhost:8000/api/flights/payment/create-payment-intent', {
+            const paymentIntentResponse = await fetch('/api/flights/payment/create-payment-intent', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -204,7 +204,7 @@ const Payment = () => {
 
             if (paymentIntent.status === 'succeeded') {
                 console.log('Pago exitoso, procesando reserva...');
-                const bookResponse = await fetch(`http://localhost:8000/api/flights/${flightId}/book`, {
+                const bookResponse = await fetch(`/api/flights/${flightId}/book`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,

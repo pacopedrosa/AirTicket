@@ -52,7 +52,8 @@ class AuthController extends AbstractController
             
             // Datos adicionales
             $user->setFullName($data['fullName']);
-            $user->setPhone($data['phone']);
+            $phone = preg_replace('/[^0-9]/', '', $data['phone']);
+            $user->setPhone((int)$phone);
             
             // Convertir string a objeto DateTime para birthdate
             $birthdate = new \DateTime($data['birthdate']);

@@ -17,7 +17,7 @@ const MyFlights = () => {
                     return;
                 }
 
-                const response = await fetch('http://localhost:8000/api/user/flights', {
+                const response = await fetch('/api/user/flights', {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,

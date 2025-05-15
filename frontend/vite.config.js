@@ -4,4 +4,19 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+    strictPort: true,
+    hmr: {
+      clientPort: 3000,
+      host: 'localhost',
+    },
+    watch: {
+      usePolling: true,
+    },
+    allowedHosts: ['frontend', 'localhost'],
+  }
 })
+
+

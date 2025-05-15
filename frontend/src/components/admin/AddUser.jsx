@@ -31,7 +31,7 @@ const AddUser = () => {
                 throw new Error('No se encontró el token de autenticación');
             }
 
-            const response = await fetch('http://127.0.0.1:8000/api/admin/users', {
+            const response = await fetch('/api/admin/users', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

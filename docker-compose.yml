@@ -1,0 +1,67 @@
+version: "3.9"
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: DockerfileFrontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true # Activa polling para asegurar detección de cambios en Docker
+    networks:
+      - redweb
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: DockerfileBackend
+    container_name: backend
+    command: bash -c "composer install && php -S 0.0.0.0:8000 -t public"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    networks:
+        - redweb
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=mysql://root:root@db:3306/vueling?serverVersion=8.0.23&charset=utf8mb4
+
+  web:
+    build:
+      context: ./web
+      dockerfile: DockerfileWeb
+    container_name: web
+    ports:
+      - "80:80" # Si tienes problemas con el puerto 80, cambia el puerto externo aquí
+    networks:
+      - redweb
+    depends_on:
+      - backend
+
+  db:
+    image: mysql:8.0
+    container_name: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: vueling
+      MYSQL_ALLOW_EMPTY_PASSWORD: "no"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - redweb
+
+networks:
+  redweb:
+    driver: bridge
+
+volumes:
+  mysql_data:

@@ -14,7 +14,7 @@ const RecentBookings = () => {
                     throw new Error('No authentication token found');
                 }
 
-                const response = await fetch('http://127.0.0.1:8000/api/admin/dashboard/recent-bookings', {
+                const response = await fetch('/api/admin/dashboard/recent-bookings', { 
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,

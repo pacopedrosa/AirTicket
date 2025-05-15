@@ -27,7 +27,7 @@ const AddFlight = () => {
         e.preventDefault();
         try {
             const token = Cookies.get('jwt_token');
-            const response = await fetch('http://127.0.0.1:8000/api/admin/flights', {
+            const response = await fetch('/api/admin/flights', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
