@@ -3,9 +3,11 @@ import DataTable from './DataTable';
 import Pagination from './Pagination';
 import Cookies from 'js-cookie';
 import { useNavigate } from 'react-router-dom';
+import { useNotification } from '../../hooks/useNotification';
 
 const FlightManagement = () => {
     const navigate = useNavigate();
+    const { showSuccess, showError } = useNotification();
     const [flights, setFlights] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -20,6 +22,7 @@ const FlightManagement = () => {
         { field: 'arrivalDate', header: 'Arrival' },
         { field: 'basePrice', header: 'Price' }
     ];
+
 
     const fetchFlights = async (page) => {
         try {
@@ -80,32 +83,32 @@ const FlightManagement = () => {
     }, [currentPage]);
 
     const handleDelete = async (flight) => {
-        if (window.confirm('Estas seguro que quieres eliminar el vuelo?')) {
+        if (window.confirm('¿Estás seguro que quieres eliminar el vuelo?')) {
             try {
                 const token = Cookies.get('jwt_token');
                 if (!token) {
-                    throw new Error('No se encontró el token de autenticación');
+                    showError('No se encontró el token de autenticación');
+                    return;
                 }
 
                 const response = await fetch(`/api/admin/flights/${flight.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
                         'Content-Type': 'application/json'
-                    },
-                    credentials: 'include'
+                    }
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || 'Error al eliminar el vuelo');
+                    const errorData = await response.json();
+                    showError(errorData.error || 'Error al eliminar el vuelo');
+                    return;
                 }
 
+                showSuccess('Vuelo eliminado correctamente');
                 fetchFlights(currentPage);
             } catch (error) {
-                console.error('Error deleting flight:', error);
-                setError(error.message);
+                showError('Error al eliminar el vuelo');
             }
         }
     };

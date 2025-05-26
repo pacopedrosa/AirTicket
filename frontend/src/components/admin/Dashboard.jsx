@@ -14,6 +14,7 @@ const Dashboard = () => {
     });
     const [recentBookings, setRecentBookings] = useState([]);
 
+
     const fetchData = async () => {
         try {
             const token = Cookies.get('jwt_token');
@@ -21,7 +22,7 @@ const Dashboard = () => {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch('/api/admin/dashboard', {
+            const response = await fetch(`/api/admin/dashboard`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'

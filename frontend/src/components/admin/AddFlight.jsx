@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
+import { useNotification } from '../../hooks/useNotification';
 
 const AddFlight = () => {
     const navigate = useNavigate();
+    const { showSuccess, showError } = useNotification();
     const [formData, setFormData] = useState({
         flightNumber: '',
         origin: '',
@@ -14,6 +16,7 @@ const AddFlight = () => {
         totalSeats: '',
     });
     const [error, setError] = useState(null);
+
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -27,7 +30,7 @@ const AddFlight = () => {
         e.preventDefault();
         try {
             const token = Cookies.get('jwt_token');
-            const response = await fetch('/api/admin/flights', {
+            const response = await fetch(`/api/admin/flights`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -37,12 +40,15 @@ const AddFlight = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Error al crear el vuelo');
+                const errorData = await response.json();
+                showError(errorData.error || 'Error al crear el vuelo');
+                return;
             }
 
+            showSuccess('Vuelo creado correctamente');
             navigate('/admin/flights');
         } catch (error) {
-            setError(error.message);
+            showError('Error al crear el vuelo');
         }
     };
 

@@ -17,6 +17,7 @@ import Statistics from '../components/admin/Statistics';
 import Settings from '../components/admin/Settings';
 import AddFlight from "../components/admin/AddFlight";
 import AddUser from '../components/admin/AddUser';
+import LandingPage from '../pages/LandingPage';
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 
@@ -30,15 +31,19 @@ const router = createBrowserRouter([
         children: [
             // Rutas públicas
             {
-                path: "/login",
+                index: true,
+                element: <LandingPage />,
+            },
+            {
+                path: "login",
                 element: <Login />,
             },
             {
-                path: "/register",
+                path: "register",
                 element: <Register />,
             },
             {
-                path: "/flights",
+                path: "flights",
                 element: <Flights />,
             },
             // Rutas protegidas
@@ -46,7 +51,7 @@ const router = createBrowserRouter([
                 element: <ProtectedRoute />,
                 children: [
                     {
-                        index: true,
+                        path: "home",
                         element: <Home />,
                     },
                     {

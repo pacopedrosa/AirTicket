@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { useNotification } from '../hooks/useNotification';
 
 // Inicializa Stripe con la clave pública
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
@@ -24,6 +25,8 @@ const Payment = () => {
     const [extraReservationId, setExtraReservationId] = useState(null);
     const [postalCode, setPostalCode] = useState('');
     const [isProcessingPayment, setIsProcessingPayment] = useState(false); // Nuevo estado para manejar el proceso de pago
+    const { showSuccess, showError } = useNotification();
+
 
     useEffect(() => {
         const fetchData = async () => {
@@ -46,7 +49,7 @@ const Payment = () => {
                 setFlight(flightData);
                 setTotalPrice(flightData.base_price);
 
-                const methodsResponse = await fetch('/api/payment-methods', {
+                const methodsResponse = await fetch(`/api/payment-methods`, {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
 
@@ -57,7 +60,7 @@ const Payment = () => {
                 const methodsData = await methodsResponse.json();
                 setPaymentMethods(methodsData);
 
-                const extrasResponse = await fetch('/api/extras', {
+                const extrasResponse = await fetch(`/api/extras`, {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
 
@@ -95,48 +98,47 @@ const Payment = () => {
 
     const handlePayment = async (e) => {
         e.preventDefault();
+        setIsProcessingPayment(true);
 
         if (!stripe || !elements) {
-            setError('Stripe no está inicializado. Por favor, intenta de nuevo.');
+            showError('Stripe no está inicializado. Por favor, intenta de nuevo.');
+            setIsProcessingPayment(false);
             return;
         }
 
         if (!selectedMethod || (selectedMethod !== 'credit_card' && selectedMethod !== 'debit_card')) {
             setError('Por favor, selecciona un método de pago válido (tarjeta de crédito o débito).');
+            setIsProcessingPayment(false);
             return;
         }
 
         const cardElement = elements.getElement(CardElement);
         if (!cardElement) {
             setError('Error al cargar los detalles de la tarjeta. Por favor, intenta de nuevo.');
+            setIsProcessingPayment(false);
             return;
         }
 
         if (!postalCode) {
             setError('Por favor, ingresa un código postal válido.');
+            setIsProcessingPayment(false);
             return;
         }
-
-        // Evitar re-renderizados mientras se procesa el pago
-        setIsProcessingPayment(true);
 
         try {
             const token = Cookies.get('jwt_token');
             if (!token) {
-                console.error('No hay token de autenticación');
+                showError('No se encontró el token de autenticación');
                 navigate('/login');
                 return;
             }
-            console.log('Token presente:', !!token);
-            console.log('Iniciando proceso de pago...');
 
             const selectedExtrasArray = Object.entries(selectedExtras)
                 .filter(([_, quantity]) => quantity > 0)
                 .map(([id, quantity]) => ({ id: parseInt(id), quantity }));
 
             if (selectedExtrasArray.length > 0) {
-                console.log('Reservando extras:', selectedExtrasArray);
-                const extrasResponse = await fetch('/api/extras/reserve', {
+                const extrasResponse = await fetch(`/api/extras/reserve`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -157,7 +159,7 @@ const Payment = () => {
             }
 
             console.log('Creando PaymentIntent con monto:', totalPrice * 100);
-            const paymentIntentResponse = await fetch('/api/flights/payment/create-payment-intent', {
+            const paymentIntentResponse = await fetch(`/api/flights/payment/create-payment-intent`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -224,11 +226,12 @@ const Payment = () => {
 
                 const bookData = await bookResponse.json();
                 console.log('Reserva procesada:', bookData);
+                showSuccess('¡Reserva realizada con éxito!');
                 navigate('/my-flights');
             }
         } catch (error) {
-            console.error('Error completo en el proceso de pago:', error);
-            setError(error.message || 'Error al procesar el pago. Por favor, inténtalo de nuevo.');
+            console.error('Error:', error);
+            showError('Error al procesar el pago. Por favor, inténtalo de nuevo.');
             setIsProcessingPayment(false);
         }
     };

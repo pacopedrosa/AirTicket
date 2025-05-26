@@ -30,6 +30,7 @@ const ActivityChart = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+
     useEffect(() => {
         const fetchActivityData = async () => {
             try {
@@ -38,7 +39,7 @@ const ActivityChart = () => {
                     throw new Error('No authentication token found');
                 }
 
-                const response = await fetch('/api/admin/dashboard/activity', {
+                const response = await fetch(`/api/admin/dashboard/activity`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json',

@@ -3,14 +3,17 @@ import Cookies from 'js-cookie';
 import DataTable from './DataTable';
 import Pagination from './Pagination';
 import { useNavigate } from 'react-router-dom';
+import { useNotification } from '../../hooks/useNotification';
 
 const UserManagement = () => {
     const navigate = useNavigate();
+    const { showSuccess, showError } = useNotification();
     const [users, setUsers] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+
 
     const columns = [
         { field: 'id', header: 'ID' },
@@ -59,11 +62,12 @@ const UserManagement = () => {
     }, [currentPage]);
 
     const handleDelete = async (user) => {
-        if (window.confirm('Are you sure you want to delete this user?')) {
+        if (window.confirm('¿Estás seguro que quieres eliminar este usuario?')) {
             try {
                 const token = Cookies.get('jwt_token');
                 if (!token) {
-                    throw new Error('No se encontró el token de autenticación en la cookie');
+                    showError('No se encontró el token de autenticación');
+                    return;
                 }
     
                 const response = await fetch(`/api/admin/deleteUser/${user.id}`, {
@@ -77,16 +81,15 @@ const UserManagement = () => {
     
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || `Error del servidor: ${response.status}`);
+                    showError(errorData.error || `Error del servidor: ${response.status}`);
+                    return;
                 }
     
-                // Mostrar mensaje de éxito (opcional)
-                setError(null); // Limpiar cualquier error previo
-                alert('Usuario eliminado exitosamente');
+                showSuccess('Usuario eliminado exitosamente');
                 fetchUsers(currentPage);
             } catch (error) {
                 console.error('Error deleting user:', error.message);
-                setError(error.message); // Mostrar el mensaje de error específico
+                showError('Error al eliminar el usuario');
             }
         }
     };

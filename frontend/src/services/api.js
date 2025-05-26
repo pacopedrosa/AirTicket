@@ -20,7 +20,7 @@ export const api = {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    window.location.href = '/login';
+                    window.location.href = '/';
                     return;
                 }
                 throw new Error('Error en la petición');
@@ -43,7 +43,7 @@ export const api = {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    window.location.href = '/login';
+                    window.location.href = '/';
                     return;
                 }
                 throw new Error('Error en la petición');

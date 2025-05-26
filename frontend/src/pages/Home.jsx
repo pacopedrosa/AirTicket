@@ -9,6 +9,8 @@ import Cookies from 'js-cookie';
 const Home = () => {
     const [searchParams] = useSearchParams();
 
+    
+
     useEffect(() => {
         const fetchFlights = async () => {
             try {

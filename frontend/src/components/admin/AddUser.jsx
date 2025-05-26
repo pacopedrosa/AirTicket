@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
+import { useNotification } from '../../hooks/useNotification';
 
 const AddUser = () => {
     const navigate = useNavigate();
+    const { showSuccess, showError } = useNotification();
     const [formData, setFormData] = useState({
         username: '',
         email: '',
@@ -14,6 +16,7 @@ const AddUser = () => {
         roles: ['ROLE_USER']
     });
     const [error, setError] = useState(null);
+    
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -28,10 +31,11 @@ const AddUser = () => {
         try {
             const token = Cookies.get('jwt_token');
             if (!token) {
-                throw new Error('No se encontró el token de autenticación');
+                showError('No se encontró el token de autenticación');
+                return;
             }
 
-            const response = await fetch('/api/admin/users', {
+            const response = await fetch(`/api/admin/users`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -43,12 +47,14 @@ const AddUser = () => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Error al crear el usuario');
+                showError(errorData.error || 'Error al crear el usuario');
+                return;
             }
 
+            showSuccess('Usuario creado correctamente');
             navigate('/admin/users');
         } catch (error) {
-            setError(error.message);
+            showError('Error al crear el usuario');
         }
     };
 

@@ -19,6 +19,7 @@ const ReservationManagement = () => {
         { field: 'createdAt', header: 'Created At' }
     ];
 
+
     const fetchReservations = async (page = 1) => {
         try {
             setLoading(true);
@@ -36,7 +37,7 @@ const ReservationManagement = () => {
             };
 
             // Use the correct endpoint for reservations
-                const response = await fetch(`/api/admin/reservations?page=${page}&limit=10`, {
+            const response = await fetch(`/api/admin/reservations?page=${page}&limit=10`, {
                 method: 'GET',
                 headers,
                 credentials: 'include'

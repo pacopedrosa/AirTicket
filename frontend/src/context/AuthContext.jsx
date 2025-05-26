@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
                 return;
             }
 
-            const response = await fetch("/api/user", {
+            const response = await fetch(`/api/user`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }) => {
             setIsLoading(true);
             setError(null);
 
-            const response = await fetch("/api/login", {
+            const response = await fetch(`/api/login`, {
                 method: "POST",
                 credentials: 'include',
                 mode: 'cors',
@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }) => {
     const register = async (email, password, username, fullName, phone, birthdate) => {
         try {
             setIsLoading(true);
-            const response = await fetch("/api/register", {
+            const response = await fetch(`/api/register`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

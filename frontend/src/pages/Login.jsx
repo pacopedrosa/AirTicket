@@ -16,7 +16,7 @@ const Login = () => {
       const success = await login(email, password);
       if (success) {
         console.log('Login exitoso, redirigiendo...');
-        navigate('/');
+        navigate('/home');
       }
     } catch (error) {
       console.error('Error en el login:', error);

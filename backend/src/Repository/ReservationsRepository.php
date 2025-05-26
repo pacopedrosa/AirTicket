@@ -114,4 +114,34 @@ class ReservationsRepository extends ServiceEntityRepository
             throw new \Exception('Error al obtener usuarios paginados: ' . $e->getMessage());
         }
     }
+
+    public function getTotalReservationsCount(): int
+    {
+        return $this->count([]);
+    }
+
+    public function getMonthlyRevenue(\DateTime $startDate, \DateTime $endDate): float
+    {
+        return $this->createQueryBuilder('r')
+            ->select('SUM(r.total_price)')
+            ->where('r.reservation_date BETWEEN :start AND :end')
+            ->andWhere('r.state = :state')
+            ->setParameter('start', $startDate)
+            ->setParameter('end', $endDate)
+            ->setParameter('state', 'CONFIRMED')
+            ->getQuery()
+            ->getSingleScalarResult() ?? 0;
+    }
+
+    public function getRecentBookings(int $limit = 10): array
+    {
+        return $this->createQueryBuilder('r')
+            ->select('r', 'f', 'u')
+            ->leftJoin('r.flight', 'f')
+            ->leftJoin('r.user', 'u')
+            ->orderBy('r.reservation_date', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
 }

@@ -7,6 +7,7 @@ const DashboardStats = () => {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(true);
 
+
     useEffect(() => {
         const fetchStats = async () => {
             try {
@@ -15,7 +16,7 @@ const DashboardStats = () => {
                     throw new Error('No authentication token found');
                 }
 
-                const response = await fetch('/api/statistics', {
+                const response = await fetch(`/api/statistics`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,

@@ -20,6 +20,11 @@ class FlightRepository extends ServiceEntityRepository
     {
         $qb = $this->createQueryBuilder('f');
 
+        // Always filter for future dates
+        $currentDate = new \DateTime('now', new \DateTimeZone('Europe/Madrid'));
+        $qb->andWhere('f.departure_date > :currentDate')
+           ->setParameter('currentDate', $currentDate);
+
         // Handle date filtering if provided
         if ($date) {
             $dateStart = new \DateTime($date);
@@ -113,5 +118,15 @@ class FlightRepository extends ServiceEntityRepository
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+    }
+
+    public function getActiveFlightsCount(): int
+    {
+        return $this->createQueryBuilder('f')
+            ->select('COUNT(f)')
+            ->where('f.departure_date > :now')
+            ->setParameter('now', new \DateTime())
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 }

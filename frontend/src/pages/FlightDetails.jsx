@@ -7,9 +7,10 @@ const FlightDetails = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+
   const handleReservation = async () => {
     try {
-      const response = await fetch(`/api/flights/${id}/book`, {
+      const response = await fetch(`/api/flights/${id}/book`, {  
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller;
+namespace App\Controller\Api;
 
 use App\Entity\Flight;
 use App\Entity\User;
@@ -8,6 +8,7 @@ use App\Repository\UserRepository;
 use App\Repository\FlightRepository;
 use App\Repository\ReservationsRepository;
 use App\Repository\PayRepository;
+use App\Repository\StatisticsRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -24,6 +25,8 @@ class AdminController extends AbstractController
     private $userRepository;
     private $flightRepository;
     private $reservationsRepository;
+    private $statisticsRepository;
+    private $payRepository;
     private LoggerInterface $logger;
 
     public function __construct(
@@ -31,12 +34,14 @@ class AdminController extends AbstractController
         FlightRepository $flightRepository,
         ReservationsRepository $reservationsRepository,
         PayRepository $payRepository,
+        StatisticsRepository $statisticsRepository,
         LoggerInterface $logger
     ) {
         $this->userRepository = $userRepository;
         $this->flightRepository = $flightRepository;
         $this->payRepository = $payRepository;
         $this->reservationsRepository = $reservationsRepository;
+        $this->statisticsRepository = $statisticsRepository;
         $this->logger = $logger;
     }
 
@@ -45,87 +50,8 @@ class AdminController extends AbstractController
     public function getStatistics(): JsonResponse
     {
         try {
-            // Mes actual
-            $startOfMonth = new \DateTime('first day of this month midnight');
-            $endOfMonth = new \DateTime('last day of this month 23:59:59');
-
-            // Mes anterior
-            $startOfLastMonth = (clone $startOfMonth)->modify('-1 month');
-            $endOfLastMonth = (clone $endOfMonth)->modify('-1 month');
-
-            // Ingresos mensuales (actual)
-            $monthlyRevenue = $this->reservationsRepository->createQueryBuilder('r')
-                ->select('SUM(r.total_price)')
-                ->where('r.state = :state')
-                ->andWhere('r.reservation_date BETWEEN :start AND :end')
-                ->setParameter('state', 'CONFIRMED')
-                ->setParameter('start', $startOfMonth)
-                ->setParameter('end', $endOfMonth)
-                ->getQuery()
-                ->getSingleScalarResult() ?? 0;
-
-            // Ingresos mensuales (anterior)
-            $lastMonthRevenue = $this->reservationsRepository->createQueryBuilder('r')
-                ->select('SUM(r.total_price)')
-                ->where('r.state = :state')
-                ->andWhere('r.reservation_date BETWEEN :start AND :end')
-                ->setParameter('state', 'CONFIRMED')
-                ->setParameter('start', $startOfLastMonth)
-                ->setParameter('end', $endOfLastMonth)
-                ->getQuery()
-                ->getSingleScalarResult() ?? 0;
-
-            // Vuelos activos (actual)
-            $activeFlights = $this->flightRepository->createQueryBuilder('f')
-                ->select('COUNT(f)')
-                ->where('f.departure_date >= :now')
-                ->setParameter('now', new \DateTime())
-                ->getQuery()
-                ->getSingleScalarResult();
-
-            // Vuelos activos (anterior: vuelos que partieron el mes pasado)
-            $lastMonthFlights = $this->flightRepository->createQueryBuilder('f')
-                ->select('COUNT(f)')
-                ->where('f.departure_date BETWEEN :start AND :end')
-                ->setParameter('start', $startOfLastMonth)
-                ->setParameter('end', $endOfLastMonth)
-                ->getQuery()
-                ->getSingleScalarResult();
-
-            // Reservas totales (actual)
-            $totalReservations = $this->reservationsRepository->count(['state' => 'CONFIRMED']);
-
-            // Reservas totales (mes anterior)
-            $lastMonthReservations = $this->reservationsRepository->createQueryBuilder('r')
-                ->select('COUNT(r)')
-                ->where('r.state = :state')
-                ->andWhere('r.reservation_date BETWEEN :start AND :end')
-                ->setParameter('state', 'CONFIRMED')
-                ->setParameter('start', $startOfLastMonth)
-                ->setParameter('end', $endOfLastMonth)
-                ->getQuery()
-                ->getSingleScalarResult();
-
-            // Usuarios totales (actual)
-            $totalUsers = $this->userRepository->count([]);
-
-            // Usuarios totales (anterior: asumimos que no hay campo created_at, así que usamos el mismo conteo)
-            $lastMonthUsers = $totalUsers; // Sin created_at, no podemos saber nuevos usuarios del mes pasado
-
-            return $this->json([
-                'current' => [
-                    'monthlyRevenue' => (float)$monthlyRevenue,
-                    'activeFlights' => (int)$activeFlights,
-                    'totalReservations' => (int)$totalReservations,
-                    'totalUsers' => (int)$totalUsers
-                ],
-                'previous' => [
-                    'monthlyRevenue' => (float)$lastMonthRevenue,
-                    'activeFlights' => (int)$lastMonthFlights,
-                    'totalReservations' => (int)$lastMonthReservations,
-                    'totalUsers' => (int)$lastMonthUsers
-                ]
-            ]);
+            $statistics = $this->statisticsRepository->getStatistics();
+            return $this->json($statistics);
         } catch (\Exception $e) {
             $this->logger->error('Error al obtener estadísticas: ' . $e->getMessage(), ['exception' => $e]);
             return $this->json(['error' => 'Error al obtener estadísticas'], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
@@ -457,22 +383,12 @@ class AdminController extends AbstractController
             $endDate = new \DateTime();
             $startDate = (clone $endDate)->modify('-6 days');
             
-            $qb = $this->reservationsRepository->createQueryBuilder('r')
-                ->select('DATE(r.reservation_date) as date')
-                ->addSelect('COUNT(r.id) as bookings')
-                ->addSelect('SUM(r.total_price) as revenue')
-                ->where('r.reservation_date BETWEEN :start AND :end')
-                ->setParameter('start', $startDate->format('Y-m-d'))
-                ->setParameter('end', $endDate->format('Y-m-d'))
-                ->groupBy('date')
-                ->orderBy('date', 'ASC');
-    
-            $results = $qb->getQuery()->getResult();
-    
+            $results = $this->statisticsRepository->getActivityData($startDate, $endDate);
+
             $dates = [];
             $bookingsData = [];
             $revenueData = [];
-    
+
             for ($i = 6; $i >= 0; $i--) {
                 $date = (clone $endDate)->modify("-$i days");
                 $dateStr = $date->format('Y-m-d');
@@ -480,7 +396,7 @@ class AdminController extends AbstractController
                 $bookingsData[$dateStr] = 0;
                 $revenueData[$dateStr] = 0;
             }
-    
+
             foreach ($results as $result) {
                 $dateStr = $result['date'];
                 if (isset($bookingsData[$dateStr])) {
@@ -488,13 +404,13 @@ class AdminController extends AbstractController
                     $revenueData[$dateStr] = (float)$result['revenue'];
                 }
             }
-    
+
             return $this->json([
                 'labels' => $dates,
                 'bookings' => array_values($bookingsData),
                 'revenue' => array_values($revenueData)
             ]);
-    
+
         } catch (\Exception $e) {
             $this->logger->error('Error al obtener datos de actividad: ' . $e->getMessage(), ['exception' => $e]);
             return $this->json(['error' => 'Error al obtener datos de actividad'], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
@@ -513,51 +429,26 @@ class AdminController extends AbstractController
             $this->logger->info('Iniciando getDashboardStats');
 
             // Total usuarios (excluyendo admin)
-            $totalUsers = $userRepository->createQueryBuilder('u')
-                ->select('COUNT(u)')
-                ->where('u.roles NOT LIKE :role')
-                ->setParameter('role', '%ROLE_ADMIN%')
-                ->getQuery()
-                ->getSingleScalarResult();
+            $totalUsers = $userRepository->getTotalUsersExcludingAdmins();
             $this->logger->info('Total usuarios obtenido: ' . $totalUsers);
 
             // Vuelos activos
-            $activeFlights = $flightRepository->createQueryBuilder('f')
-                ->select('COUNT(f)')
-                ->where('f.departure_date > :now')
-                ->setParameter('now', new \DateTime())
-                ->getQuery()
-                ->getSingleScalarResult();
+            $activeFlights = $flightRepository->getActiveFlightsCount();
             $this->logger->info('Vuelos activos obtenidos: ' . $activeFlights);
 
             // Total reservas
-            $totalReservations = $reservationsRepository->count([]);
+            $totalReservations = $reservationsRepository->getTotalReservationsCount();
             $this->logger->info('Total reservas obtenidas: ' . $totalReservations);
 
             // Ingresos mensuales
             $startOfMonth = new \DateTime('first day of this month midnight');
             $endOfMonth = new \DateTime('last day of this month 23:59:59');
             
-            $monthlyRevenue = $reservationsRepository->createQueryBuilder('r')
-                ->select('SUM(r.total_price)')
-                ->where('r.reservation_date BETWEEN :start AND :end')
-                ->andWhere('r.state = :state')
-                ->setParameter('start', $startOfMonth)
-                ->setParameter('end', $endOfMonth)
-                ->setParameter('state', 'CONFIRMED')
-                ->getQuery()
-                ->getSingleScalarResult() ?? 0;
+            $monthlyRevenue = $reservationsRepository->getMonthlyRevenue($startOfMonth, $endOfMonth);
             $this->logger->info('Ingresos mensuales obtenidos: ' . $monthlyRevenue);
 
             // Reservas recientes
-            $recentBookings = $reservationsRepository->createQueryBuilder('r')
-                ->select('r', 'f', 'u')
-                ->leftJoin('r.flight', 'f')
-                ->leftJoin('r.user', 'u')
-                ->orderBy('r.reservation_date', 'DESC')
-                ->setMaxResults(10)
-                ->getQuery()
-                ->getResult();
+            $recentBookings = $reservationsRepository->getRecentBookings();
             $this->logger->info('Reservas recientes obtenidas: ' . count($recentBookings));
 
             $bookingsData = array_map(function($booking) {

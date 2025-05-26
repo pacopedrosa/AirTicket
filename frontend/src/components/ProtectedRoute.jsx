@@ -13,9 +13,9 @@ const ProtectedRoute = () => {
         );
     }
 
-    // Si el usuario no está autenticado, redirigir al login
+    // Si el usuario no está autenticado, redirigir a la landing page
     if (!user) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/" replace />;
     }
 
     // Si el usuario está autenticado, mostrar el contenido protegido
