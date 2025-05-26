@@ -20,14 +20,13 @@ services:
       context: ./backend
       dockerfile: DockerfileBackend
     container_name: backend
-    command: bash -c "composer install && php bin/console cache:clear && php -S 0.0.0.0:8000 -t public"
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - backend_cache:/app/var/cache
-      - backend_logs:/app/var/log
-    user: www-data
+      - backend_composer_cache:/var/www/.composer/cache
+      - backend_var_cache:/app/var/cache
+      - backend_var_logs:/app/var/log
     networks:
       - redweb
     depends_on:
@@ -36,6 +35,7 @@ services:
       - DATABASE_URL=mysql://root:root@db:3306/vueling?serverVersion=8.0.23&charset=utf8mb4
       - APP_ENV=dev
       - APP_DEBUG=1
+      - COMPOSER_ALLOW_SUPERUSER=1
 
   web:
     build:
@@ -70,5 +70,6 @@ networks:
 
 volumes:
   mysql_data:
-  backend_cache:
-  backend_logs:
+  backend_composer_cache:
+  backend_var_cache:
+  backend_var_logs:
