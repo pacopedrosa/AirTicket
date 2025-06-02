@@ -16,6 +16,7 @@ const AddUser = () => {
         roles: ['ROLE_USER']
     });
     const [error, setError] = useState(null);
+    const apiUrl = import.meta.env.VITE_API_URL;
     
 
     const handleChange = (e) => {
@@ -35,7 +36,7 @@ const AddUser = () => {
                 return;
             }
 
-            const response = await fetch(`/api/admin/users`, {
+            const response = await fetch(`${apiUrl}/api/admin/users`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

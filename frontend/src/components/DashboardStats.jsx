@@ -6,6 +6,7 @@ const DashboardStats = () => {
     const [stats, setStats] = useState(null);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(true);
+    const apiUrl = import.meta.env.VITE_API_URL;
 
 
     useEffect(() => {
@@ -16,7 +17,7 @@ const DashboardStats = () => {
                     throw new Error('No authentication token found');
                 }
 
-                const response = await fetch(`/api/statistics`, {
+                const response = await fetch(`${apiUrl}/api/statistics`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,

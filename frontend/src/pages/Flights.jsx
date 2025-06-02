@@ -10,7 +10,7 @@ const Flights = () => {
     const [flights, setFlights] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
+    const apiUrl = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
         const fetchFlights = async () => {
@@ -33,7 +33,7 @@ const Flights = () => {
                 if (date) params.append('date', date);
 
                 const response = await fetch(
-                    `/api/flights${params.toString() ? `?${params.toString()}` : ''}`,
+                    `${apiUrl}/api/flights${params.toString() ? `?${params.toString()}` : ''}`,
                     {
                         method: 'GET',
                         headers: {

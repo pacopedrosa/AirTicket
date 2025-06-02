@@ -13,7 +13,7 @@ const Dashboard = () => {
         monthlyRevenue: 0
     });
     const [recentBookings, setRecentBookings] = useState([]);
-
+    const apiUrl = import.meta.env.VITE_API_URL;
 
     const fetchData = async () => {
         try {
@@ -22,7 +22,7 @@ const Dashboard = () => {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`/api/admin/dashboard`, {
+            const response = await fetch(`${apiUrl}/api/admin/dashboard`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'

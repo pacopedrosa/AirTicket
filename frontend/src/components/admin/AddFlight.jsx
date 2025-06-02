@@ -16,7 +16,7 @@ const AddFlight = () => {
         totalSeats: '',
     });
     const [error, setError] = useState(null);
-
+    const apiUrl = import.meta.env.VITE_API_URL;
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -30,7 +30,7 @@ const AddFlight = () => {
         e.preventDefault();
         try {
             const token = Cookies.get('jwt_token');
-            const response = await fetch(`/api/admin/flights`, {
+            const response = await fetch(`${apiUrl}/api/admin/flights`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

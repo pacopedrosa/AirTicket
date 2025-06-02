@@ -13,6 +13,7 @@ const UserManagement = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const apiUrl = import.meta.env.VITE_API_URL;
 
 
     const columns = [
@@ -31,7 +32,7 @@ const UserManagement = () => {
                 throw new Error('No se encontró el token de autenticación en la cookie');
             }
 
-            const response = await fetch(`/api/admin/users?page=${page}`, { 
+            const response = await fetch(`${apiUrl}/api/admin/users?page=${page}`, { 
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -70,7 +71,7 @@ const UserManagement = () => {
                     return;
                 }
     
-                const response = await fetch(`/api/admin/deleteUser/${user.id}`, {
+                const response = await fetch(`${apiUrl}/api/admin/deleteUser/${user.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,

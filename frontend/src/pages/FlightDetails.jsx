@@ -6,11 +6,12 @@ const FlightDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const apiUrl = import.meta.env.VITE_API_URL;
 
 
   const handleReservation = async () => {
     try {
-      const response = await fetch(`/api/flights/${id}/book`, {  
+      const response = await fetch(`${apiUrl}/api/flights/${id}/book`, {  
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

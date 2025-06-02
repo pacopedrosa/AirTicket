@@ -9,6 +9,7 @@ const ReservationManagement = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const apiUrl = import.meta.env.VITE_API_URL;
 
     const columns = [
         { field: 'id', header: 'ID' },
@@ -37,7 +38,7 @@ const ReservationManagement = () => {
             };
 
             // Use the correct endpoint for reservations
-            const response = await fetch(`/api/admin/reservations?page=${page}&limit=10`, {
+            const response = await fetch(`${apiUrl}/api/admin/reservations?page=${page}&limit=10`, {
                 method: 'GET',
                 headers,
                 credentials: 'include'
@@ -115,7 +116,7 @@ const ReservationManagement = () => {
                     throw new Error('No authentication token found');
                 }
 
-                const response = await fetch(`/api/admin/reservations/${reservation.id}`, {
+                const response = await fetch(`${apiUrl}/api/admin/reservations/${reservation.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,

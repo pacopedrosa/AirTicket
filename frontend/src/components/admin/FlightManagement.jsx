@@ -13,6 +13,7 @@ const FlightManagement = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const apiUrl = import.meta.env.VITE_API_URL;
 
     const columns = [
         { field: 'flightNumber', header: 'Flight Number' },
@@ -34,7 +35,7 @@ const FlightManagement = () => {
                 throw new Error('No se encontró el token de autenticación');
             }
 
-            const response = await fetch(`/api/admin/flights?page=${page}&limit=10`, {
+            const response = await fetch(`${apiUrl}/api/admin/flights?page=${page}&limit=10`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -91,7 +92,7 @@ const FlightManagement = () => {
                     return;
                 }
 
-                const response = await fetch(`/api/admin/flights/${flight.id}`, {
+                const response = await fetch(`${apiUrl}/api/admin/flights/${flight.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,

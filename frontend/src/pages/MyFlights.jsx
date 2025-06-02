@@ -10,6 +10,8 @@ const MyFlights = () => {
     const [error, setError] = useState(null);
     const navigate = useNavigate();
     const { showSuccess, showError } = useNotification();
+    const apiUrl = import.meta.env.VITE_API_URL;
+
 
     useEffect(() => {
         const fetchMyFlights = async () => {
@@ -20,7 +22,7 @@ const MyFlights = () => {
                     return;
                 }
 
-                const response = await fetch(`/api/user/flights`, {
+                const response = await fetch(`${apiUrl}/api/user/flights`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -69,7 +71,7 @@ const MyFlights = () => {
                 return;
             }
 
-            const url = `/api/user/flights/${reservationId}/pdf`;
+            const url = `${apiUrl}/api/user/flights/${reservationId}/pdf`;
             console.log('URL de la petición:', url);
 
             const response = await fetch(url, {

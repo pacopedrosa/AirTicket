@@ -8,6 +8,7 @@ import Cookies from 'js-cookie';
 
 const Home = () => {
     const [searchParams] = useSearchParams();
+    const apiUrl = import.meta.env.VITE_API_URL;
 
     
 
@@ -25,7 +26,7 @@ const Home = () => {
                     console.log('Search params:', { origin, destination, date }); // Add this for debugging
                     
                     const response = await fetch(
-                        `/api/flights/search?origin=${origin}&destination=${destination}&date=${date}`,
+                        `${apiUrl}/api/flights/search?origin=${origin}&destination=${destination}&date=${date}`,
                         {
                             headers: {
                                 'Authorization': `Bearer ${token}`,

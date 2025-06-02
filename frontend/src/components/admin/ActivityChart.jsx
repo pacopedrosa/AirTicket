@@ -29,6 +29,7 @@ const ActivityChart = () => {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const apiUrl = import.meta.env.VITE_API_URL;
 
 
     useEffect(() => {
@@ -39,7 +40,7 @@ const ActivityChart = () => {
                     throw new Error('No authentication token found');
                 }
 
-                const response = await fetch(`/api/admin/dashboard/activity`, {
+                const response = await fetch(`${apiUrl}/api/admin/dashboard/activity`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json',
