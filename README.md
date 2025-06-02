@@ -32,7 +32,6 @@ Sistema de gestión y reserva de vuelos desarrollado con React y Symfony.
    ```bash
    php bin/console lexik:jwt:generate-keypair
    ```
-5. Debes tener el xampp abierto
 ## 💳 Información de Pago
 Para realizar compras de prueba, utiliza los siguientes datos de tarjeta:
 - **Número**: 4242 4242 4242 4242
