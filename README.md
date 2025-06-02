@@ -28,7 +28,7 @@ Sistema de gestión y reserva de vuelos desarrollado con React y Symfony.
    ```
 2. Espera a que se instalen todas las dependencias
 3. La base de datos está incluida en un volumen Docker, por lo que estará disponible inmediatamente con datos pre-cargados
-4. Accede a la carpeta del backend, anteriormente debes haber creado una carpeta jwt en config y debes usar el comando para poder usar las claves con jwt en el login  
+4. Si se clona desde git se debe instalar las dependencias y ademas accede a la carpeta del backend, anteriormente debes haber creado una carpeta jwt en config y debes usar el comando para poder usar las claves con jwt en el login  
    ```bash
    php bin/console lexik:jwt:generate-keypair
    ```
